@@ -1,0 +1,14 @@
+<?php
+
+/**
+ * Implementation of hook_install()
+ */
+function progress_tracker_install() {}
+
+/**
+ * Implementation of hook_uninstall()
+ */
+function progress_tracker_uninstall() {
+  variable_del('progress_tracker_steps');
+  variable_del('progress_tracker_layout');
+}

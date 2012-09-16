@@ -1,0 +1,250 @@
+<?php
+
+/**
+ * Implementation of hook_apachesolr_update_index().
+ *
+ * This adds Ubercart specific fields to the Solr index.
+ */
+function apachesolr_ubercart_apachesolr_update_index(&$document, $node) {
+  if (in_array($node->type, module_invoke_all('product_types'))) {
+
+    if(!empty($node->model)) {
+      $document->ss_uc_sku = $node->model;
+    }
+    if (!empty($node->list_price)) {
+      $document->fs_uc_list_price = $node->list_price;
+    }
+    if (!empty($node->sell_price)) {
+      $document->fs_uc_sell_price = $node->sell_price;
+    }
+    if(!empty($node->weight)) {
+      $document->fs_uc_weight = $node->weight;
+    }
+    if(!empty($node->length)) {
+      $document->fs_uc_length = $node->length;
+    }
+    if(!empty($node->width)) {
+      $document->fs_uc_width = $node->width;
+    }
+    if(!empty($node->height)) {
+      $document->fs_uc_height = $node->height;
+    }
+  }
+}
+
+/**
+ * Implementation of hook_apachesolr_facets().
+ */
+function apachesolr_ubercart_apachesolr_facets() {
+  $facets = array();
+  //ubercart list prices
+  $facets['fs_uc_sell_price'] = array(
+    'info' => t('Apache Solr Search: Filter by Price (Selling price)'),
+    'facet_field' => 'fs_uc_sell_price',
+    'dividable' => TRUE,
+  );
+  $facets['fs_uc_list_price'] = array(
+    'info' => t('Apache Solr Search: Filter by Price (Listed price)'),
+    'facet_field' => 'fs_uc_list_price',
+    'dividable' => TRUE,
+  );
+  $facets['ss_uc_sku'] = array(
+    'info' => t('Apache Solr Search: Filter by Model'),
+    'facet_field' => 'ss_uc_sku',
+  );
+  $facets['fs_uc_weight'] = array(
+    'info' => t('Apache Solr Search: Filter by Weight'),
+    'facet_field' => 'fs_uc_weight',
+    'dividable' => TRUE,
+  );
+  $facets['fs_uc_length'] = array(
+    'info' => t('Apache Solr Search: Filter by Length'),
+    'facet_field' => 'fs_uc_length',
+    'dividable' => TRUE,
+  );
+  $facets['fs_uc_width'] = array(
+    'info' => t('Apache Solr Search: Filter by Width'),
+    'facet_field' => 'fs_uc_width',
+    'dividable' => TRUE,
+  );
+  $facets['fs_uc_height'] = array(
+    'info' => t('Apache Solr Search: Filter by Height'),
+    'facet_field' => 'fs_uc_height',
+    'dividable' => TRUE,
+  );
+  return $facets;
+}
+
+/**
+ * Implementation of hook_block().
+ */
+function apachesolr_ubercart_block($op = 'list', $delta = 0, $edit = array()) {
+
+  switch ($op) {
+    case 'list':
+      $enabled_facets = apachesolr_get_enabled_facets('apachesolr_ubercart');
+      $facets = apachesolr_ubercart_apachesolr_facets();
+      // Add the blocks
+      $blocks = array();
+      foreach ($enabled_facets as $delta => $facet_field) {
+        if (isset($facets[$delta])) {
+          $blocks[$delta] = $facets[$delta] + array('cache' => BLOCK_CACHE_PER_PAGE,);
+        }
+      }
+      return $blocks;
+    case 'configure':
+      $facets = apachesolr_ubercart_apachesolr_facets();
+      $form = array();
+      if (array_key_exists($delta, $facets)) {
+        if($facets[$delta]['dividable']) {
+         $form['apachesolr_ubercart_division'] = array(
+           '#type' => 'textfield',
+           '#title' => t('The division of the price block (split all our prices by 20 for example'),
+           '#default_value' => variable_get('apachesolr_ubercart_division_'.$delta,20),
+         );
+        }
+      }
+      return $form;
+    case 'save':
+      $facets = apachesolr_ubercart_apachesolr_facets();
+      if(array_key_exists($delta,$facets)) {
+        if($facets[$delta]['dividable']) {
+          variable_set('apachesolr_ubercart_division_'.$delta, (int) $edit['apachesolr_ubercart_division']);
+        }
+      }
+      break;
+    case 'view':
+      if (apachesolr_has_searched()) {
+        // Get the query and response. Without these no blocks make sense.
+        $response = apachesolr_static_response_cache();
+        if (empty($response)) {
+          return;
+        }
+        $query = apachesolr_current_query();
+        $facets = apachesolr_get_enabled_facets('apachesolr_ubercart');
+        if (empty($facets[$delta]) && ($delta != 'currentsearch')) {
+          return;
+        }
+
+        // Get information needed by the taxonomy blocks about limits.
+        $initial_limits = variable_get('apachesolr_facet_query_initial_limits', array());
+        $limit_default = variable_get('apachesolr_facet_query_initial_limit_default', 10);
+        $division = variable_get('apachesolr_apachesolr_ubercart_division_' . $delta, 20);
+        switch ($delta) {
+          case 'fs_uc_sell_price':
+            return apachesolr_ubercart_price_facet_block($response, $query, 'apachesolr_ubercart', $delta, $delta, t('Filter by price'),$division);
+          case 'fs_uc_list_price':
+            return apachesolr_ubercart_price_facet_block($response, $query, 'apachesolr_ubercart', $delta, $delta, t('Filter by price'),$division);
+          case 'ss_uc_sku':
+            return apachesolr_facet_block($response, $query, 'apachesolr_ubercart', $delta, $delta, t('Filter by product ID'));
+          case 'fs_uc_weight':
+            return apachesolr_ubercart_price_facet_block($response, $query, 'apachesolr_ubercart', $delta, $delta, t('Filter by weight'),$division);
+          case 'fs_uc_length':
+            return apachesolr_ubercart_price_facet_block($response, $query, 'apachesolr_ubercart', $delta, $delta, t('Filter by length'),$division);
+          case 'fs_uc_width':
+            return apachesolr_ubercart_price_facet_block($response, $query, 'apachesolr_ubercart', $delta, $delta, t('Filter by width'),$division);
+          case 'fs_uc_height':
+            return apachesolr_ubercart_price_facet_block($response, $query, 'apachesolr_ubercart', $delta, $delta, t('Filter by height'),$division);
+        }
+        break;
+      }
+      break;
+  }
+}
+
+/**
+ * Helper function for displaying a facet block based on prices.
+ *
+ * @todo: This is a copy of apachesolr_facet_block() with some modifications.
+ * We should reuse more code, that means apachesolr_facet_block() should be
+ * properly abstracted.
+ */
+function apachesolr_ubercart_price_facet_block($response, $query, $module, $delta, $facet_field, $filter_by, $division, $facet_callback = FALSE) {
+
+  if (!empty($response->facet_counts->facet_fields->$facet_field)) {
+
+    $contains_active = FALSE;
+    $items = array();
+
+    // Construct our facet link amounts.
+    if(!empty($response->facet_counts->facet_fields->$delta)) {
+      $links = array();
+      foreach($response->facet_counts->facet_fields->$delta as $price => $count){
+
+        // we use Intval to filter on our divisions.
+        $divide  = intval($price/$division);
+        $links[$divide] += $count ;
+      }
+    }
+
+    // Iterate over the available facet links.
+    foreach($links as $price_range => $count) {
+      $sortpre = 1000000 - $count;
+      $options = array();
+      $exclude = FALSE;
+      $from_price = $price_range * $division;
+      $to_price = ($price_range * $division) + $division;
+      $facet_text = t('from @price_from to @price_to',array('@price_from'=>$from_price,'@price_to'=>$to_price));
+      $facet = '['.$from_price.' TO '.$to_price.']';
+      $unclick_link = '';
+      $active = FALSE;
+      $new_query = clone $query;
+
+      if ($query->has_filter($facet_field, $facet)) {
+        $contains_active = $active = TRUE;
+        // '*' sorts before all numbers.
+        $sortpre = '*';
+        $new_query->remove_filter($facet_field, $facet);
+        $options['query'] = $new_query->get_url_queryvalues();
+        $link = theme('apachesolr_unclick_link', $facet_text, $new_query->get_path(), $options);
+      }
+      else {
+        $new_query->add_filter($facet_field, $facet, $exclude);
+        $options['query'] = $new_query->get_url_queryvalues();
+        $link = theme('apachesolr_facet_link', $facet_text, $new_query->get_path(), $options, $count, $active, $response->response->numFound);
+      }
+      if ($count || $active) {
+        $items[$sortpre . '*' . $facet_text] = $link;
+      }
+    }
+
+    // Unless a facet is active only display 2 or more.
+    if ($items && ($response->response->numFound > 1 || $contains_active)) {
+      ksort($items, SORT_STRING);
+      // Get information needed by the rest of the blocks about limits.
+      $initial_limits = variable_get('apachesolr_facet_query_initial_limits', array());
+      $limit = isset($initial_limits[$module][$delta]) ? $initial_limits[$module][$delta] : variable_get('apachesolr_facet_query_initial_limit_default', 10);
+      $output = theme('apachesolr_facet_list', $items, $limit);
+      return array('subject' => $filter_by, 'content' => $output);
+    }
+  }
+  return NULL;
+}
+
+/**
+ * Implementation of hook_apachesolr_prepare_query();
+ */
+function apachesolr_ubercart_apachesolr_prepare_query(&$query) {
+  $query->set_available_sort('fs_uc_sell_price', array(
+    'title' => t('Price'),
+    'default' => 'asc',
+  ));
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function apachesolr_ubercart_theme() {
+  return array(
+    'apachesolr_ubercart_breadcrumb_fs_uc_sell_price' => array(
+      'arguments' => array('type' => 'test'),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_views_api().
+ */
+function apachesolr_ubercart_views_api() {
+  return array('api' => '3.0-dev');
+}

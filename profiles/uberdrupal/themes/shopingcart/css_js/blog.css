@@ -1,0 +1,394 @@
+#divBlogContainer h2 {
+    padding: 0;
+}
+
+#divBlogContainer .header-container #pBlogDescription,
+#divBlogContainer .header-container #aBackToMain {
+    margin: 0 20px 10px;
+    padding: 0;
+}
+
+#divBlogContainer div div div {
+    padding: 0;
+}
+
+#divBlogContainer div .box {
+    margin-bottom: 20px;
+    width: 580px;
+}
+
+#divBlogContainer .col8 .box {
+    font-size: 1.1em;
+    width: 580px;
+    overflow: hidden;
+}
+
+#divBlogContainer .col8 .box .archiveexcerpt img {
+    display: block;
+    margin: 0 auto;
+}
+
+#divBlogContainer a.link-more {
+    display: block;
+    margin-top: 10px;
+}
+
+#divBlogContainer #aArchives {
+    padding: 0 20px;
+}
+
+#divBlogContainer #divPagination {
+    text-align: center;
+}
+
+#divBlogContainer #divPagination li {
+    display: inline;
+}
+
+#divBlogContainer #divPagination li a {
+    margin: 0 2px;
+    padding: 2px 7px;
+    text-align: center;
+}
+
+#divBlogContainer #divPagination li.first,
+#divBlogContainer #divPagination li.previous {
+    padding-right: 10px;
+}
+
+#divBlogContainer #divPagination li.next,
+#divBlogContainer #divPagination li.last {
+    padding-left: 10px;
+}
+
+#divBlogContainer #divPagination li.first a,
+#divBlogContainer #divPagination li.previous a,
+#divBlogContainer #divPagination li.next a,
+#divBlogContainer #divPagination li.last a {
+    border: none;
+}
+
+#divBlogContainer #divPagination li span {
+    font-weight: bold;
+    margin: 0 2px;
+    padding: 2px 7px;
+}
+
+#divBlogContainer div.sociable {
+    border-top: 2px solid #ddd;
+    padding: 18px 0 0;
+}
+
+#divBlogContainer div.sociable ul {
+    margin: 0 -6px;
+    padding: 0;
+    text-align: right;
+}
+
+#divBlogContainer div.sociable ul li {
+    background: none;
+    display: inline !important;
+    list-style-type: none;
+    margin: 0 6px 12px;
+    padding: 0;
+}
+
+#divBlogContainer div.sociable ul li:before {
+    content: "";
+}
+
+#divBlogContainer .col8 .box div.sociable img {
+    display: inline;
+    float: none;
+    width: 16px;
+    height: 16px;
+    border: 0;
+    margin: 0;
+    padding: 0;
+}
+
+#divBlogContainer ul.taxonomies {
+    border-top: 2px solid #ddd;
+    padding: 8px 0;
+    font-size: .95em;
+}
+
+#divBlogContainer div.related-articles {
+    margin: 20px 0 0;
+}
+
+#divBlogContainer div.related-articles ul li {
+    margin: 10px 0 0;
+    padding: 0 0 0 16px;
+    background-position: left;
+    background-repeat: no-repeat;
+}
+
+#divBlogContainer #comments h4 {
+    font-size: 1.3em;
+    margin: 20px 0 10px;
+}
+
+#divBlogContainer #comments h4 a {
+    display: block;
+    padding: 0 0 0 20px;
+    background-position: left;
+    background-repeat: no-repeat;
+}
+
+#divBlogContainer #comments h4 a:hover {
+    text-decoration: none;
+}
+
+#divBlogContainer #comments .commentlist {
+    margin: 10px -30px;
+}
+
+#divBlogContainer #comments img.avatar {
+    border: 4px solid #ddd;
+    border-radius: 4px;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    float: left;
+    margin: 0 14px 20px;
+}
+
+#divBlogContainer #comments .blog-comment {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    float: left;
+    margin: 0 10px 20px 6px;
+    padding: 19px;
+    width: 500px;
+    box-shadow: 3px 3px 4px #ddd;
+    -moz-box-shadow: 2px 2px 3px #ddd;
+    -webkit-box-shadow: 2px 2px 3px #ddd;
+    position: relative;
+}
+
+#divBlogContainer #comments .even div.blog-comment {
+    background: #f6f6f6;
+}
+
+#divBlogContainer #comments .blog-comment span.bubble {
+    position: absolute;
+    top: 23px;
+    left: -7px;
+    width: 7px;
+    height: 16px;
+    background: url(/blog/wp-content/themes/moo/images/bubble-white.png) left no-repeat;
+}
+
+#divBlogContainer #comments .even div.blog-comment span.bubble {
+    background: url(/blog/wp-content/themes/moo/images/bubble-grey.png) left no-repeat;
+}
+
+#divBlogContainer #comments .blog-comment div.date {
+    float: right;
+}
+
+#divBlogContainer #comments .even div.blog-comment div.blog-comment-content {
+    color: #555;
+}
+
+#divBlogContainer #comments .blog-comment-form label {
+    float: none;
+    display: block;
+}
+
+#divBlogContainer #comments .blog-comment-form small {
+    display: block;
+}
+
+#divBlogContainer #comments .blog-comment-form textarea {
+    width: 560px;
+    height: 120px;
+}
+
+#divBlogContainer #comments .blog-comment-form div.buttons {
+    text-align: left;
+}
+
+#divBlogContainer ul.bullets {
+    margin: 10px 0 20px;
+}
+
+/* Sidebar */
+
+/* Widgets */
+#divBlogContainer #divSidebar .widget {
+    margin: 0 0 20px;
+    background-color: #ebebeb;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+}
+
+#divBlogContainer #divSidebar .widget h4 {
+    font-size: 1.3em;
+    padding-bottom: 5px;
+}
+
+#divBlogContainer #divSidebar .widget .textwidget,
+#divBlogContainer #divSidebar .widget ul {
+    background: #fff;
+    margin: 0 -16px -14px;
+    padding: 16px 18px;
+    border: 1px solid #ddd;
+
+}
+
+#divBlogContainer #divSidebar .widget p {
+    margin: 0 0 10px;
+}
+
+#divBlogContainer #divSidebar ul {
+    padding: 0;
+}
+
+/* "Also on..." */
+#divBlogContainer #divSidebar #linkcat-5 {
+    border: none;
+    background: #fff;
+}
+
+#divBlogContainer #divSidebar #linkcat-5 h4 {
+    border-bottom: none;
+}
+
+#divBlogContainer #divSidebar #linkcat-5 ul {
+    border: none;
+}
+
+#divBlogContainer #divSidebar #linkcat-5 ul li {
+    display: inline;
+}
+
+#divBlogContainer #divSidebar #linkcat-5 ul li:after {
+    content: ","
+}
+
+#divBlogContainer #divSidebar #linkcat-5 ul li:last-child:after {
+    content: "";
+}
+
+/* New to MOO */
+#divBlogContainer #divSidebar #divWidgettext-7 .textwidget {
+    background: #fff url(/images/ideas/productfan_small.png) right 65px no-repeat;
+    padding-bottom: 28px;
+}
+
+#divBlogContainer #divSidebar .widget p.skinny {
+    width: 100px;
+}
+
+/* Newsletter signup */
+#divBlogContainer #divSidebar #divWidgettext-3 .textwidget form {
+    margin: 0;
+}
+
+#divBlogContainer #divSidebar #divWidgettext-3 .textwidget .newsletter-box-twitter,
+#divBlogContainer #divSidebar #divWidgettext-3 .textwidget .newsletter-box-rss {
+    display: block;
+    font-weight: bold;
+    min-height: 18px;
+    padding-left: 24px;
+}
+
+#divBlogContainer #divSidebar #divWidgettext-3 .textwidget .newsletter-box-twitter {
+    background: url(/images/icon-twitter-18x18.png) no-repeat;
+}
+
+#divBlogContainer #divSidebar #divWidgettext-3 .textwidget .newsletter-box-rss {
+    background: url(/images/icon-rss-18x18.png) no-repeat;
+}
+
+#divBlogContainer #divSidebar #divWidgettext-3 .textwidget .input-newsletter-signup {
+    width: 150px;
+    display: inline;
+}
+
+/* Flickr */
+#divBlogContainer #divSidebar #divWidgetflickrrss ul {
+    padding: 20px 8px 0;
+}
+
+#divBlogContainer #divSidebar #divWidgetflickrrss ul li {
+    float: left;
+    margin: 0 8px 20px;
+}
+
+#divBlogContainer #divSidebar #divWidgetflickrrss p {
+    background: #fff;
+    margin: 0 -16px -14px;
+    padding: 16px 18px;
+    border-style: solid;
+    border-color: #ddd;
+    border-width: 0 1px 1px;
+}
+
+/* Twitter */
+#divBlogContainer #divSidebar #divWidgettext-4 {
+    border: none;
+    background: #fff;
+}
+
+#divBlogContainer #divSidebar #divWidgettext-4 div,
+#divBlogContainer #divSidebar #divWidgettext-4 ul {
+    border: none;
+}
+
+#divBlogContainer #divSidebar #divWidgettext-4 ul.twitter-feed {
+    margin: 0;
+    padding: 0;
+}
+
+#divBlogContainer #divSidebar #divWidgettext-4 ul.twitter-feed li {
+    margin-bottom: 15px;
+    position: relative;
+}
+
+#divBlogContainer #divSidebar #divWidgettext-4 ul.twitter-feed li img.twitter-image {
+    position: absolute;
+    display: block;
+    top: 5px;
+    border: 4px solid #ddd;
+    border-radius: 4px;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+}
+
+#divBlogContainer #divSidebar #divWidgettext-4 img.twitter-speech {
+    position: absolute;
+    margin: 16px -17px;
+    z-index: 10;
+}
+
+#divBlogContainer #divSidebar #divWidgettext-4 img.twitter-t {
+    vertical-align: middle;
+    margin-right: 5px;
+}
+
+#divBlogContainer #divSidebar #divWidgettext-4 ul.twitter-feed li div.twitter-quote {
+    position: relative;
+    margin-left: 50px;
+    background: #fff;
+    border: 2px solid #ddd;
+    padding: 10px;
+    box-shadow: 0 0 4px #ccc;
+    -moz-box-shadow: 0 0 4px #ccc;
+    -webkit-box-shadow: 0 0 4px #ccc;
+    z-index: 5;
+}
+
+#divBlogContainer #divSidebar #divWidgettext-4 div.twitter-quote p {
+    margin: 5px 0px;
+}
+
+#divBlogContainer #divSidebar .twitter-link,
+#divBlogContainer #divSidebar .twitter-box-alt {
+    display: none;
+}

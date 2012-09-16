@@ -1,0 +1,187 @@
+/* Skins
+ *
+ * Skin styles should be limited to typography, colors, and
+ * backgrounds. Except for text elements (i.e. h3, megamenu-title,
+ * etc.), widths, margins, and padding of structural blocks are
+ * set in the administration area.
+ *--------------------------------------------------------*/
+
+
+
+
+
+/* @group friendly (ucsf theme)*/
+
+/* overrides - begin */
+
+	.megamenu-custom-friendly li{
+		margin:0px;
+		padding:0px;
+		line-height:120%;
+	}
+  .megamenu-custom-friendly *{
+		list-style:none;
+	}
+
+/* overrides - end */
+
+
+.megamenu-custom-friendly{
+	font-family:verdana,tahoma,arial,helvetica,sans-serif;
+	background:#f5bb00; /* pharmacy medium gold */
+	padding:0px 0px 5px 10px;
+}
+.megamenu-custom-friendly a:hover{
+	text-decoration:none;
+}
+.megamenu-custom-friendly .megamenu-parent-title{
+	text-transform:lowercase;
+}
+.megamenu-custom-friendly .megamenu-parent-title{
+	font-weight:normal;
+	font-size:100%;
+	vertical-align:bottom;
+}
+.megamenu-custom-friendly .megamenu-parent-title a,
+.megamenu-custom-friendly .megamenu-parent-title span,
+.megamenu-custom-friendly .megamenu-parent-title a:visited{
+	font-style:normal;
+	color:#000; /* black */
+	padding:5px;
+}
+.megamenu-custom-friendly .megamenu-parent-title a,
+.megamenu-custom-friendly .megamenu-parent-title span,
+.megamenu-custom-friendly .hovering .megamenu-parent-title a:hover{
+	-moz-border-radius-topright:8px;
+	-webkit-border-top-right-radius:8px;
+	-moz-border-radius-topleft:8px;
+	-webkit-border-top-left-radius:8px;
+}
+.megamenu-custom-friendly .megamenu-slot,
+.megamenu-custom-friendly .megamenu-slot a:hover{
+	-moz-border-radius:8px;
+	-webkit-border-radius:8px;
+	border-radius:8px;
+}
+.megamenu-custom-friendly li.megamenu-slot{
+	/*width:auto;*/
+	/*max-width:200px;*/
+	width:200px;
+	margin:10px 10px auto auto;
+	background:#b08700; /* pharmacy dark gold */
+	padding-top:10px;
+	padding-bottom:10px;
+}
+.megamenu-custom-friendly li.megamenu-slot:hover{
+	background-color:#b08700; /* pharmacy dark gold */
+}
+.megamenu-custom-friendly .hovering .megamenu-parent-title a,
+.megamenu-custom-friendly .hovering .megamenu-parent-title span{
+	color:#fff;
+	background:#b08700; /* pharmacy dark gold */
+}
+.megamenu-custom-friendly .hovering .megamenu-parent-title span:hover,
+.megamenu-custom-friendly .megamenu-slot-title span{
+	cursor:default;
+}
+.megamenu-custom-friendly .hovering .megamenu-parent-title a:hover{
+	color:#fff; /* white */
+	background:#00325b; /* 540 blue */
+}
+.megamenu-custom-friendly .megamenu-bin{
+	margin-top:5px;
+	padding:0px;
+	color:#fff; /* white */
+}
+.megamenu-custom-friendly .megamenu-slot-title{
+	font-family:"Arial Black",Arial,Helvetica,sans-serif;
+	color:#f4ebcb; /* 80% white on pharmacy dark gold */
+}
+.megamenu-custom-friendly .megamenu-slot-title a:link,
+.megamenu-custom-friendly .megamenu-slot-title a:visited{
+	color:#f4ebcb; /* 80% white on pharmacy dark gold */
+}
+.megamenu-custom-friendly .megamenu-slot-title a,
+.megamenu-custom-friendly .megamenu-slot-title span,
+.megamenu-custom-friendly .megamenu-item a,
+.megamenu-custom-friendly .megamenu-item span{
+	padding:5px 12px 7px 12px;
+	display:block;
+}
+.megamenu-custom-friendly .megamenu-slot a{
+	color:#fff; /* white */
+}
+.megamenu-custom-friendly .megamenu-slot a:hover{
+	color:#fff; /* white */
+	background:#00325b; /* 540 blue */
+}
+.megamenu-custom-friendly .megamenu-item a,
+.megamenu-custom-friendly .megamenu-item span{
+	color:#fff; /* white */
+	font-size:100%;
+}
+.megamenu-custom-friendly .megamenu-item a:hover{
+	color:#fff; /* white */
+	background:#00325b; /* 540 blue */
+}
+.megamenu-custom-friendly li.megamenu-slot{
+	z-index:3000;
+	background:#b08700; /* pharmacy dark gold */
+	margin-bottom:1.5em;
+	border:0px;
+	border-radius:10px;
+	-moz-border-radius:10px;
+	-webkit-border-radius:10px;
+	-opera-border-radius:10px;
+	-khtml-border-radius:10px;
+  -khtml-box-shadow:rgba(0,0,0,.33) 5px 5px 5px;
+	-moz-box-shadow:rgba(0,0,0,.33) 5px 5px 5px;
+	box-shadow:rgba(0,0,0,.33) 5px 5px 5px;
+
+}
+.megamenu-custom-friendly ul a:hover{
+	text-decoration:none;
+}
+
+.megamenu-custom-friendly .megamenu-slot-title{
+	font-size:150%;
+	line-height:150%;
+	font-weight:bold;
+}
+
+/* start - ensure that #megamenu-menu bar is the same height in all browsers
+ * very frustrating to get this correct - do not touch!
+ *--------------------------------------------------------*/
+.megamenu-custom-friendly .megamenu-item a,
+.megamenu-custom-friendly .megamenu-item span
+{
+	font-size:120%;
+}
+.megamenu-menu,
+.megamenu-custom-friendly .megamenu-parent,
+.megamenu-custom-friendly .megamenu-parent-title
+/* this is the key -- all these must be set to the same value */
+{
+	font-size:100%;
+	line-height:110%;
+	height:100%;
+}
+
+.megamenu-custom-friendly .megamenu-parent-title a,
+.megamenu-custom-friendly .megamenu-parent-title a:link,
+.megamenu-custom-friendly .megamenu-parent-title a:visited,
+.megamenu-custom-friendly .megamenu-parent-title a:focus,
+.megamenu-custom-friendly .megamenu-parent-title a:hover,
+.megamenu-custom-friendly .megamenu-parent-title a:active,
+.megamenu-custom-friendly .megamenu-parent-title span
+{
+	padding:4px 8px;
+}
+/* end - ensure that #megamenu-menu bar is the same height in all browsers
+ *--------------------------------------------------------*/
+.megamenu-custom-friendly .megamenu-parent-title a:hover {
+	text-decoration:none;
+	color:#fff; /* white */
+	background:#00325b; /* 540 blue coated */
+}
+/* @end Friendly */

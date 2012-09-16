@@ -1,0 +1,578 @@
+# $Id: invoice.pot,v 1.1.2.4 2010/10/02 18:47:47 pvogelaar Exp $
+#
+# LANGUAGE translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  invoice_ajax.inc,v 1.1.2.6 2010/10/02 16:50:44 pvogelaar
+#  invoice_form.inc,v 1.1.2.9 2010/10/02 16:50:44 pvogelaar
+#  invoice.module,v 1.1.2.8 2010/10/01 14:09:54 pvogelaar
+#  default.inc,v 1.1.2.2 2009/01/02 21:24:23 pvogelaar
+#  invoice_helpers.inc,v 1.1.2.9 2010/10/02 18:23:20 pvogelaar
+#  invoice.info,v 1.1.2.5 2010/02/17 19:38:57 pvogelaar
+#  javascript/invoice.js: n/a
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2010-10-02 20:31+0200\n"
+"PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
+"Last-Translator: NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: invoice_ajax.inc:97;244;282
+msgid "You are not the owner of this item id!"
+msgstr ""
+
+#: invoice_ajax.inc:120
+msgid "Error"
+msgstr ""
+
+#: invoice_ajax.inc:120
+msgid "You have to fill in either \"Price without VAT\" or \"Price with VAT\"!"
+msgstr ""
+
+#: invoice_ajax.inc:190 invoice_form.inc:190
+msgid "Add item"
+msgstr ""
+
+#: invoice_ajax.inc:208 invoice_form.inc:754 invoice.module:567
+msgid "Edit"
+msgstr ""
+
+#: invoice_ajax.inc:213 invoice_form.inc:759 invoice.module:568;597
+msgid "Delete"
+msgstr ""
+
+#: invoice_ajax.inc:258
+msgid "This item id does not exist!"
+msgstr ""
+
+#: invoice_ajax.inc:266 invoice.module:95
+msgid "Save item"
+msgstr ""
+
+#: invoice_ajax.inc:306
+msgid "This item id does not exist, does not belong to this invoice or you are not the owner!"
+msgstr ""
+
+#: invoice_form.inc:32
+msgid "Invoice template"
+msgstr ""
+
+#: invoice_form.inc:55
+msgid "When editing this invoice, you'll have to save first before you can see template changes."
+msgstr ""
+
+#: invoice_form.inc:64;196
+msgid "Customer details"
+msgstr ""
+
+#: invoice_form.inc:67
+msgid "You either have to fill in Company name or Lastname. Firstname is optional and is only saved if a Lastname is filled in."
+msgstr ""
+
+#: invoice_form.inc:72 invoice.module:80
+msgid "Search customer"
+msgstr ""
+
+#: invoice_form.inc:79;433;622
+msgid "Company name"
+msgstr ""
+
+#: invoice_form.inc:85
+msgid "Firstname"
+msgstr ""
+
+#: invoice_form.inc:91
+msgid "Lastname"
+msgstr ""
+
+#: invoice_form.inc:97;160;245;285 templates/default.inc:189
+msgid "Description"
+msgstr ""
+
+#: invoice_form.inc:98;394;583 templates/default.inc:112;192;286
+msgid "VAT"
+msgstr ""
+
+#: invoice_form.inc:99
+msgid "Count"
+msgstr ""
+
+#: invoice_form.inc:100
+msgid "Unitcost (ex. VAT)"
+msgstr ""
+
+#: invoice_form.inc:101
+msgid "Unitcost (inc. VAT)"
+msgstr ""
+
+#: invoice_form.inc:102
+msgid "Subtotal (ex. VAT)"
+msgstr ""
+
+#: invoice_form.inc:103
+msgid "Subtotal (inc. VAT)"
+msgstr ""
+
+#: invoice_form.inc:109
+msgid "Invoice items"
+msgstr ""
+
+#: invoice_form.inc:134
+msgid "Empty"
+msgstr ""
+
+#: invoice_form.inc:155
+msgid "Invoice item id"
+msgstr ""
+
+#: invoice_form.inc:166 templates/default.inc:196
+msgid "Quantity"
+msgstr ""
+
+#: invoice_form.inc:172
+msgid "Price without VAT"
+msgstr ""
+
+#: invoice_form.inc:174
+msgid "If you don't fill in this field, you'll have to fill in \"Price with VAT\""
+msgstr ""
+
+#: invoice_form.inc:178
+msgid "Price with VAT"
+msgstr ""
+
+#: invoice_form.inc:180
+msgid "If you don't fill in this field, you'll have to fill in \"Price without VAT\""
+msgstr ""
+
+#: invoice_form.inc:184
+msgid "VAT percentage"
+msgstr ""
+
+#: invoice_form.inc:191
+msgid "Cancel"
+msgstr ""
+
+#: invoice_form.inc:196;252
+msgid "optional"
+msgstr ""
+
+#: invoice_form.inc:203;439;628
+msgid "Street"
+msgstr ""
+
+#: invoice_form.inc:209;445;634
+msgid "Building number"
+msgstr ""
+
+#: invoice_form.inc:215;451;640
+msgid "Zipcode"
+msgstr ""
+
+#: invoice_form.inc:221;457;646
+msgid "City"
+msgstr ""
+
+#: invoice_form.inc:227;463;652
+msgid "Country"
+msgstr ""
+
+#: invoice_form.inc:233
+msgid "Chamber of Commerce number"
+msgstr ""
+
+#: invoice_form.inc:239;688
+msgid "VAT number"
+msgstr ""
+
+#: invoice_form.inc:252
+msgid "Invoice details"
+msgstr ""
+
+#: invoice_form.inc:262
+msgid "User defined invoice number"
+msgstr ""
+
+#: invoice_form.inc:266
+msgid "You can define an invoice number here. The number has to be higher than the latest invoice number though. It also has to be numeric."
+msgstr ""
+
+#: invoice_form.inc:271 templates/default.inc:141
+msgid "Invoice number"
+msgstr ""
+
+#: invoice_form.inc:277;359;564
+msgid "Pay limit"
+msgstr ""
+
+#: invoice_form.inc:280;362;567
+msgid "Pay limit in days"
+msgstr ""
+
+#: invoice_form.inc:291;367
+msgid "Invoice number zerofill"
+msgstr ""
+
+#: invoice_form.inc:295;370
+msgid "If you want an invoice number to be displayed as \"0001\" fill in 4. If you just want to display invoice number \"1\" leave/set empty."
+msgstr ""
+
+#: invoice_form.inc:299;375
+msgid "Invoice number prefix"
+msgstr ""
+
+#: invoice_form.inc:303;378
+msgid "If you want an invoice number to be displayed as \"@year0001\" fill in \"%Y\". Fillin 4 in the zerofill field above for extra zero values."
+msgstr ""
+
+#: invoice_form.inc:304;379
+msgid "If a new year is reached the numbering will still continue sequentially, so if the year ended with \"@year0578\", the next year will start with \"@next_year0579\""
+msgstr ""
+
+#: invoice_form.inc:305;380
+msgid "All !date values may be entered here with a \"%\" sign before it or every other text you like."
+msgstr ""
+
+#: invoice_form.inc:321
+msgid "General settings"
+msgstr ""
+
+#: invoice_form.inc:327;532
+msgid "Locale"
+msgstr ""
+
+#: invoice_form.inc:330;535
+msgid "Category/locale names can be found in !rfc1766 and !iso639. Systems can have different naming schemes for locales."
+msgstr ""
+
+#: invoice_form.inc:335;540
+msgid "On linux you can check the available locales on the server with the command \"locale -a\" or click below to see the same list."
+msgstr ""
+
+#: invoice_form.inc:336;541
+msgid "If your system/server is ubuntu (debian like) you can install more languages with the aptitude or synaptic package manager. Search for -language-pack-*-base."
+msgstr ""
+
+#: invoice_form.inc:337;542
+msgid "If you install for example -language-pack-en-base you get over 10+ locales extra, like en_US, en_GB, en_AU, en_CA etc."
+msgstr ""
+
+#: invoice_form.inc:338;543
+msgid "For more information see !link."
+msgstr ""
+
+#: invoice_form.inc:344;549
+msgid "Date format"
+msgstr ""
+
+#: invoice_form.inc:347;552
+msgid "For example m/d/Y."
+msgstr ""
+
+#: invoice_form.inc:347;552
+msgid "See !link."
+msgstr ""
+
+#: invoice_form.inc:347;552
+msgid "The date on the invoice will look like: @date_format"
+msgstr ""
+
+#: invoice_form.inc:352
+msgid "Default VAT precentage"
+msgstr ""
+
+#: invoice_form.inc:388;577
+msgid "Display invoice columns"
+msgstr ""
+
+#: invoice_form.inc:400;589
+msgid "Unitcost (ex)"
+msgstr ""
+
+#: invoice_form.inc:406;595
+msgid "Unitcost (inc)"
+msgstr ""
+
+#: invoice_form.inc:412;601 invoice.module:507
+msgid "Total (ex)"
+msgstr ""
+
+#: invoice_form.inc:418;607 invoice.module:508
+msgid "Total (inc)"
+msgstr ""
+
+#: invoice_form.inc:427;616
+msgid "Supplier details"
+msgstr ""
+
+#: invoice_form.inc:469;658
+msgid "Phone"
+msgstr ""
+
+#: invoice_form.inc:475;664
+msgid "Fax"
+msgstr ""
+
+#: invoice_form.inc:481;670
+msgid "Email"
+msgstr ""
+
+#: invoice_form.inc:487;676
+msgid "Web address"
+msgstr ""
+
+#: invoice_form.inc:493
+msgid "CoC Number"
+msgstr ""
+
+#: invoice_form.inc:499
+msgid "VAT Number"
+msgstr ""
+
+#: invoice_form.inc:512
+msgid "Default template"
+msgstr ""
+
+#: invoice_form.inc:525
+msgid "Template"
+msgstr ""
+
+#: invoice_form.inc:528
+msgid "If fields are also set in invoice general settings and the template field is empty, the general setting of the field will be used."
+msgstr ""
+
+#: invoice_form.inc:557
+msgid "Default vat percentage"
+msgstr ""
+
+#: invoice_form.inc:682
+msgid "CoC number"
+msgstr ""
+
+#: invoice_form.inc:696
+msgid "Submit"
+msgstr ""
+
+#: invoice_form.inc:729
+msgid "Weight"
+msgstr ""
+
+#: invoice_form.inc:733
+msgid "Optional. In the menu, the heavier items will sink and the lighter items will be positioned nearer the top."
+msgstr ""
+
+#: invoice_helpers.inc:603
+msgid "The DOMPDF library could not be found!"
+msgstr ""
+
+#: invoice.module:31;368;116 invoice.info:0 templates/default.inc:98
+msgid "Invoice"
+msgstr ""
+
+#: invoice.module:33
+msgid "If you want to add an invoice, use this content type."
+msgstr ""
+
+#: invoice.module:35
+msgid "Title"
+msgstr ""
+
+#: invoice.module:37
+msgid "Body"
+msgstr ""
+
+#: invoice.module:407
+msgid "TEST: The answer of _invoice_round(38.675, 2) must be 38.68, but is @answer! This problem is maybe caused by your PHP version."
+msgstr ""
+
+#: invoice.module:493
+msgid "Succesfully saved"
+msgstr ""
+
+#: invoice.module:505;515
+msgid "Invoice #"
+msgstr ""
+
+#: invoice.module:506
+msgid "Customer"
+msgstr ""
+
+#: invoice.module:509
+msgid "Created"
+msgstr ""
+
+#: invoice.module:510
+msgid "sort by @s"
+msgstr ""
+
+#: invoice.module:510
+msgid "Pay status"
+msgstr ""
+
+#: invoice.module:511
+msgid "Actions"
+msgstr ""
+
+#: invoice.module:556
+msgid "Paid"
+msgstr ""
+
+#: invoice.module:556
+msgid "Unpaid"
+msgstr ""
+
+#: invoice.module:561
+msgid "Overtime"
+msgstr ""
+
+#: invoice.module:572
+msgid "Set paid"
+msgstr ""
+
+#: invoice.module:573
+msgid "Set unpaid"
+msgstr ""
+
+#: invoice.module:608
+msgid "You have to fill in at least one invoice item!"
+msgstr ""
+
+#: invoice.module:612
+msgid "Company name and lastname may not both be empty!"
+msgstr ""
+
+#: invoice.module:616
+msgid "Save"
+msgstr ""
+
+#: invoice.module:623
+msgid "The user defined invoice number is not greater than the latest invoice number \"@invoice_number\"!"
+msgstr ""
+
+#: invoice.module:739
+msgid "You are not the owner of this invoice!"
+msgstr ""
+
+#: invoice.module:806
+msgid "Invalid invoice pay status"
+msgstr ""
+
+#: invoice.module:842
+msgid "invoice"
+msgstr ""
+
+#: invoice.module:159
+msgid "access invoices"
+msgstr ""
+
+#: invoice.module:159
+msgid "administer invoices"
+msgstr ""
+
+#: invoice.module:159
+msgid "administer own invoices"
+msgstr ""
+
+#: invoice.module:48
+msgid "Invoices"
+msgstr ""
+
+#: invoice.module:53
+msgid "Edit invoice"
+msgstr ""
+
+#: invoice.module:59
+msgid "Invoice in HTML print format"
+msgstr ""
+
+#: invoice.module:66
+msgid "Invoice in PDF format"
+msgstr ""
+
+#: invoice.module:73
+msgid "Set invoice pay status"
+msgstr ""
+
+#: invoice.module:88
+msgid "Get customer info"
+msgstr ""
+
+#: invoice.module:102
+msgid "Edit item"
+msgstr ""
+
+#: invoice.module:109
+msgid "Delete item"
+msgstr ""
+
+#: invoice.module:119
+msgid "Create and manage invoices."
+msgstr ""
+
+#: invoice.module:123
+msgid "Installed locales on your system"
+msgstr ""
+
+#: invoice.info:0
+msgid "Module to create invoices"
+msgstr ""
+
+#: javascript/invoice.js:0
+msgid "Are you sure you want to delete this invoice item?"
+msgstr ""
+
+#: templates/default.inc:111
+msgid "C.o.C."
+msgstr ""
+
+#: templates/default.inc:111;112
+msgid "nr."
+msgstr ""
+
+#: templates/default.inc:137
+msgid "Date"
+msgstr ""
+
+#: templates/default.inc:145
+msgid "Client number"
+msgstr ""
+
+#: templates/default.inc:151
+msgid "Page"
+msgstr ""
+
+#: templates/default.inc:199;204
+msgid "Unitcost"
+msgstr ""
+
+#: templates/default.inc:199;209
+msgid "ex"
+msgstr ""
+
+#: templates/default.inc:204;214
+msgid "inc"
+msgstr ""
+
+#: templates/default.inc:209;214
+msgid "Total"
+msgstr ""
+
+#: templates/default.inc:278
+msgid "Subtotal excl. VAT"
+msgstr ""
+
+#: templates/default.inc:295
+msgid "Total incl. VAT"
+msgstr ""
+
+#: templates/default.inc:304
+msgid "We kindly ask you to pay this invoice within @days days."
+msgstr ""
+

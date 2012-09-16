@@ -1,0 +1,255 @@
+<?php
+
+/**
+ * Ideally I'd prefer this to be a configurable option in uc_cart,
+ * which would be much cleaner and a good UI improvement to Ubercart
+ * IMO.
+ *
+ * But this is a demo of how the interface can work as a plugin. A
+ * final version should be much cleaner - will supply as patch
+ * shortly.
+ *
+ * @TODO doesn't update product qty for other products when removing a
+ * product, despite calling form's submit handler at end of
+ * uc_removebutton_remove_item()
+ *
+ * @TODO find better method for storing details of item to remove
+ *
+ * Keen for input on how to store the cart item details in the value
+ * of the button (image or submit button is fine, both are themeable)
+ * so that we can get rid of the horror that is
+ * _uc_removebutton_identify_removed_item()
+ *
+ * I attempted to assign arguments to button's submit callback, not
+ * sure how to do that though.
+ *
+ * I attempted using values stored in the button, but the returned
+ * value was always the value of the final button, despite the buttons
+ * having different names.
+ *
+ * Eventually I decided to just pull the posted values out using
+ * _uc_removebutton_identify_removed_item() but this is not a
+ * permanent solution.
+ *
+ * @TODO detailed instructions for themeing the delete
+ * button. delete.png is a slightly modified version of the one from
+ * ctools module
+ *
+ * @TODO configurable button or image_button
+ */
+
+/**
+ * Implement hook_form_alter()
+ *
+ * We add an extra column to the view cart screen, which presents a
+ * "Remove" button for each entry to replace the remove checkbox.
+ *
+ * For compatability with UC we conceal the original "Remove" column
+ * in hook_tapir_table_alter by setting the access property of that
+ * column to FALSE.
+ */
+function uc_removebutton_form_alter(&$form, &$form_state, $form_id) {
+  switch ( $form_id ) {
+    case 'uc_cart_view_form' :
+	  $form['items']['#columns']['cost'] = array('cell' => 'Price','weight' => 3);
+	  $form['items']['#columns']['discount'] = array('cell' => 'Discount','weight' => 3.1);
+	  $context= array(
+			'revision' => 'themed',
+			'type' => 'product',
+			'class' => array(
+			  'product',
+			),
+			'subject' => array(
+			  'node' => $product,
+			),
+		  );
+	  $cart_get_contents = uc_cart_get_contents();
+	 
+      foreach ( $form['items'] as $k => $v ) {
+		
+		
+        // we are iterating thru the view cart form, and interacting
+        // with items only if they are a table row (have an integer
+        // key) and are a product row (have a remove column)
+        if ( is_integer($k) && isset($v['remove']) ) {
+		  $nid = $v['nid']['#value'] ;
+		  
+		  $discount = $cart_get_contents[$k]->cost - $cart_get_contents[$k]->price;
+		  if($discount < 0 ) {
+			$discount = 0;
+		  }	  
+		  $cost_price = theme('uc_product_price', $cart_get_contents[$k]->cost, $context);
+          // add a remove button in a new column 'remove_button' - if
+          // we overwrite 'remove' then we'll trigger the removal of
+          // all products, because uc_cart_update_item_object() only
+          // checks to see if 'remove' is set at all
+		  $form['items'][$k]['qty']['#type']='hidden';
+		  $form['items'][$k]["cost"]['#value'] = '<span class="uc-price">'.$cost_price.'</span>';
+		  $form['items'][$k]["discount"]['#value'] = '<span class="uc-price">'.theme('uc_product_price', $discount, $context).'</span>';
+		  //$form['items'][$k]['cost'] = ;
+		  //$form['items'][$k]["cost"]['#type'] = 'value';
+          $form['items'][$k]['remove_button']['data'] = array(
+            'remove_button_'.$k => array(
+              '#type' => 'image_button',
+              '#src'  => drupal_get_path('module','uc_removebutton') . '/remove.png',
+              '#submit' => array( 'uc_removebutton_remove_item' ),
+              '#value' => 'id:'.$k,
+              '#id' => 'remove-button-'.$k,
+			  '#attributes' => array('style' => 'border:0px;box-shadow:none;background:none repeat scroll 0 0 #FFFFFF;padding 0px 0px;border-radius:0px 0px 0px 0px;'),
+            ),
+          ) ;
+        }
+		
+      }
+	  
+	  
+      break ;
+    default :
+      break ;
+  }
+}
+
+
+
+/******************************************************************************
+ * Module Functions
+ *****************************************************************************/
+
+/**
+ * Calculate product adjustments based on attribute option selections.
+ */
+function _uc_cost_calculate($nid, $attributes) {
+  //@todo use filter_input_array() instead of is_array and check_plain and require PHP 5.2
+  // If the nid is not set, we can't do anything.
+  
+  // Load the node and store the submitted data for later.
+  $product = node_load($nid);
+  // Create a fake cart item with the submitted node, quantity and attributes.
+  $item = new stdClass();
+  $item->nid = $nid;
+  $item->model = $product->model;
+  $item->cost = $product->cost;
+  $item->price = $product->sell_price;
+  $item->weight = $product->weight;
+  $item->data = unserialize($product->data);
+  $item->data['nid'] = $nid;
+  foreach ($attributes as $key => $value) {
+    $key = check_plain($key);
+    if (is_array($value)) {
+      foreach ($value as $array_key => $array_value) {
+        $item->data['attributes'][$key][check_plain($array_key)] = check_plain($array_value);
+      }
+    }
+    else {
+      $item->data['attributes'][$key] = check_plain($value);
+    }
+  }
+
+  // Let other modules adjust our cart item as needed.
+  $item->data = module_invoke_all('add_to_cart_data', $item->data);
+
+  // Invoke hook_cart_item() with $op = 'load' in enabled modules.
+  foreach (module_list() as $module) {
+    $func = $module .'_cart_item';
+    if (function_exists($func)) {
+      // $item must be passed by reference.
+      $func('load', $item);
+    }
+  }
+  return $item->cost;
+
+}
+
+/**
+ * Callback for the remove_button element
+ *
+ * This custom submit handler will remove the item for the product
+ * which was selected. It will also preserve any other changes (eg to
+ * qty) made at the same time.
+ *
+ * Would appreciate input on whether this can handle calling the
+ * parent form's submit handler(s) better too (see last few lines of
+ * function).
+ */
+function uc_removebutton_remove_item( $form, &$form_state ) {
+  if ( $form_state['submit_handlers'][0] == __FUNCTION__ ) {
+    // I would love for this next line to work, but for some reason it
+    // always returns the value of the LAST remove button instead.
+    /* $id = $form_state['clicked_button']['#value'] ; */
+    // so instead we have this super-ugly function to get us through
+    // until storing the value in the submit button works better.
+    $id = _uc_removebutton_identify_removed_item($form) ;
+    if ( isset($form['items'][$id]['nid']['#value']) && isset($form['items'][$id]['data']['#value']) ) {
+      $nid  = $form['items'][$id]['nid']['#value'];
+      $data = $form['items'][$id]['data']['#value'];
+      if ( $data = unserialize($data) ) {
+        $params = array(
+          '!qty' => $form['items'][$id]['qty']['#default_value'],
+          '!title' => $form['items'][$id]['title']['#value'],
+        ) ;
+        $msg = t('Removed !qty x !title from your cart', $params);
+        drupal_set_message($msg);
+        uc_cart_remove_item($nid, NULL, $data);
+      }
+    }
+  }
+  // we also want to call the submit handler for the form - not sure
+  // if this is the correct method - seems wrong and doesn't update
+  // product qtys
+  foreach ( $form['#submit'] as $submit_handler ) {
+    if ( function_exists($submit_handler) ) {
+      $submit_handler($form, $form_state) ;
+    }
+  }
+  drupal_goto('cart');
+}
+
+/**
+ * Implement hook_tapir_table_alter()
+ *
+ * Add a column for remove_button. 
+ *
+ * Extract column weights and insert remove_button next to qty.
+ *
+ * Remove access to the original remove checkbox column.
+ */
+function uc_removebutton_tapir_table_alter($table, $table_id) {
+  switch ( $table_id ) {
+    case 'uc_cart_view_table' :
+      $table['#columns']['remove_button'] = array(
+        'cell' => 'Remove',
+        'weight' => $table['#columns']['qty']['weight'] + 0.5,
+        'access' => TRUE,
+      ) ;
+      $table['#columns']['remove']['access'] = FALSE ;
+      break ;
+  }
+}
+
+/**
+ * Identify which item to remove from the cart.
+ *
+ * Super ugly function which I'd like to disown. A workaround for the
+ * fact that when I added multiple image buttons in the remove column
+ * with the name 'remove_button_N' and value set to 'N' (where N =
+ * 0,1,2,3,...), the button click would always return the value of the
+ * final button. Grrr.
+ *
+ * Only the clicked button's value will be present in the post
+ * values. We extract it from there and then take 'id:' off the
+ * front.
+ * 
+ * The id: prefix is there because otherwise removing the 0th item in
+ * the cart stops working.
+ */
+function _uc_removebutton_identify_removed_item($form) {
+  if ( isset( $form['items'][0]['image']['#post']['items'] ) ) {
+    foreach( $form['items'][0]['image']['#post']['items'] as $item ) {
+      if ( isset( $item['remove_button']['data'] ) ) {
+        $removed = array_pop(array_flip($item['remove_button']['data'])) ;
+        return preg_replace('/remove_button_/','',$removed) ;
+      }
+    }
+  }
+}
+

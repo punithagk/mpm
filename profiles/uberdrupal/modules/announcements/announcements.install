@@ -1,0 +1,109 @@
+<?php
+// $Id: announcements.install,v 1.1.4.6 2009/10/18 17:33:11 nancyw Exp $
+
+/**
+ * @file
+ * Announcements module install file.
+ */
+
+/**
+ * Implementation of hook_schema().
+ *
+ * Inserts the announcement module's schema in the SQL database.
+ */
+function announcements_schema() {
+  $schema['announcements'] = array(
+    'module' => 'announcements',
+    'description' => t('Extra node data.'),
+    'fields' => array(
+      'nid' => array(
+        'description' => t('Node identifier.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'disp-width' => '10',
+        ),
+      'abstract' => array(
+        'description' => t('Short summary of the announcement.'),
+        'type' => 'text',
+        'not null' => FALSE,
+        ),
+      'publish_date' => array(
+        'description' => t('Date announcement becomes effective.'),
+        'type' => 'int',
+        'unsigned' => FALSE,
+        'not null' => TRUE,
+        'default' => 0,
+        'disp-width' => '10',
+        ),
+      'expiration_date' => array(
+        'description' => t('Date announcement no longer effective.'),
+        'type' => 'int',
+        'unsigned' => FALSE,
+        'not null' => TRUE,
+        'default' => 0,
+        'disp-width' => '10',
+        ),
+      ),
+    'primary key' => array('nid'),
+    );
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ *
+ * Installs the announcement module.
+ */
+function announcements_install() {
+  $ret = drupal_install_schema('announcements');
+
+  if (!$ret[0]['success']) {
+    drupal_set_message(t('Table installation for the Announcements module was unsuccessful.'), 'error');
+  }
+}
+
+/**
+ * Implementation of hook_uninstall().
+ *
+ * Remove the variables, nodes and schema corresponding to the FAQ module.
+ */
+function announcements_uninstall() {
+  drupal_uninstall_schema('announcements');
+  
+  // Remove the node type.
+  node_type_delete('announcements');
+  
+  // Remove the blocks.
+  db_query("DELETE FROM {blocks} WHERE module='announcements'");
+  
+  // Remove the variables.
+  variable_del('announcements_allow_expire');
+  variable_del('announcements_block_max_list_count');
+  variable_del('announcements_display_classification');
+  variable_del('announcements_display');
+  variable_del('announcements_edit_link');
+  variable_del('announcements_interval');
+  variable_del('announcements_per_page');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ *
+ * Increase the size of the abstract.
+ */
+function announcements_update_6001() {
+  $ret = array();
+  db_change_field($ret, 'announcements', 'abstract', 'abstract', array('type' => 'varchar', 'length' => 2048, 'not null' => FALSE, 'default' => ''));
+  return $ret;
+}
+
+/**
+ * Implementation of hook_update_N().
+ * Change abstract to text.
+ */
+function announcements_update_6002() {
+  $ret = array();
+  db_change_field($ret, 'announcements', 'abstract', 'abstract', array('type' => 'text', 'not null' => TRUE));
+  return $ret;
+}

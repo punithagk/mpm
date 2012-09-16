@@ -1,0 +1,80 @@
+<?php
+
+/*******************************************************************************
+ * Hook Functions (Ubercart)
+ ******************************************************************************/
+
+function uc_discounts_site_discounts_condition() {
+  $conditions[] = array(
+    'property' => 'site',
+    'description' => t('Site'),
+    'compare_type' => 'text',
+    'check_callback' => 'uc_discounts_site_check',
+    'item_field_callback' => 'uc_discounts_site_item_field',
+    'item_name_callback' => 'uc_discounts_site_item_name',
+  );
+
+  return $conditions;
+}
+
+/*******************************************************************************
+ * Callback Functions, Forms, and Tables
+ ******************************************************************************/
+
+function uc_discounts_site_check($condition, $total_price, $cart) {
+  $sites = uc_discounts_site_get_sites();
+  if ($sites[$condition->item_id] == uc_discounts_site_current_site()) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+function uc_discounts_site_item_field() {
+  //
+  $sites = uc_discounts_site_get_sites();
+  //
+  if (empty($sites)) {
+    $field = array(
+      '#type' => 'item',
+      '#title' => t('Sites'),
+      '#description' => t('No sites available'),
+    );
+  }
+  else {
+    $field = array(
+      '#type' => 'select',
+      '#title' => t('Sites'),
+      '#options' => $sites,
+    );
+  }
+
+  return $field;
+}
+
+function uc_discounts_site_item_name($item_id) {
+  $sites = uc_discounts_site_get_sites();
+  if (isset($sites[$item_id])) {
+    return $sites[$item_id];
+  }
+  return '';
+}
+
+function uc_discounts_site_get_sites() {
+  $sites = array();
+  $dir = opendir('sites');
+  while ($fn = readdir($dir)) {
+    if ($fn[0] != '.' && is_dir('sites/'. $fn)) {
+      $sites[$fn] = $fn;
+    }
+  }
+  return $sites;
+}
+
+function uc_discounts_site_current_site() {
+  $site = conf_path();
+  if (substr($site, 0, 6)=='sites/') {
+    $site = substr($site, 6);
+  }
+  return $site;
+}
+

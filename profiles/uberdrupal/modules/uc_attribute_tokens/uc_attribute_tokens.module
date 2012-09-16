@@ -1,0 +1,84 @@
+<?php
+// $Id: uc_attribute_tokens.module,v 1.1.2.2 2011/02/16 18:15:02 tr Exp $
+
+/**
+ * @file
+ * Adds uc_cart_item tokens for attribute values of products.
+ *
+ * Originally written by Chris Yu <http://drupal.org/user/202205>.
+ * Now updated to Drupal 6 / Ubercart 2, enhanced, and maintained by
+ * Tim Rohaly <http://drupal.org/user/202830>.
+ *
+ * @author Tim Rohaly.    <http://drupal.org/user/202830>
+ * @version $Id: uc_attribute_tokens.module,v 1.1.2.2 2011/02/16 18:15:02 tr Exp $
+ */
+
+
+/**
+ * Implements hook_token_values(). (token.module)
+ */
+function uc_attribute_tokens_token_values($type, $object = NULL) {
+  switch ($type) {
+    case 'uc_cart_item': // For use with uc_custom_price
+      $attributes = uc_product_get_attributes($object->nid);
+      // Loop over all product attributes
+      foreach ($attributes as $key => $attribute) {
+        // Set attributes token to the value selected for this product
+        $option_array = $object->data['attributes'][$key];
+        if (is_array($option_array)) {
+          // Checkbox attributes may have more than one selection
+          $options = array();
+          foreach ($option_array as $element) {
+            if ($element) {
+              $options[] = $attribute->options[$element]->name;
+            }
+          }
+          $values[$attribute->name] = implode(', ', $options);
+        }
+        else {
+          if (count($attribute->options)) {
+            // Select or Radio attributes
+            $values[$attribute->name] = $attribute->options[$option_array]->name;
+          }
+          else {
+            // Textfield attribute
+            $values[$attribute->name] = $option_array;
+          }
+        }
+      }
+      return $values;
+      break;
+
+    case 'attribute': // For use with uc_watermark
+      if (uc_product_is_product($object)) {
+        $attributes = uc_product_get_attributes($object->nid);
+        // Loop over all product attributes
+        foreach ($attributes as $attribute) {
+          // Set attributes token to the value selected for this product
+          $option_array = $object->data['attributes'][$attribute->label];
+
+          // If option doesn't appear in product data, then it was not
+          // required and not chosen.  Skip.
+          if (isset($option_array)) {
+            // Checkbox attributes may have more than one selection
+            $values[$attribute->label] = implode(', ', $option_array);
+          }
+        }
+      }
+      return $values;
+      break;
+  }
+}
+
+
+/**
+ * Implements hook_token_list(). (token.module)
+ */
+function uc_attribute_tokens_token_list($type = 'all') {
+  if ($type == 'attribute' || $type == 'uc_cart_item' ||
+      $type == 'ubercart'  || $type == 'all') {
+    $tokens['attribute']['(attribute name)'] = t('Product attributes are made into tokens that match their name field.');
+  }
+
+  return $tokens;
+}

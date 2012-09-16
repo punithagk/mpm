@@ -1,0 +1,25 @@
+<?php
+
+/**
+ * @file uc_attribute_files.instal
+ * @author Doug Logan <my first name at dlogan dot com>
+ * Install hooks for uc_attribute_files.module.
+ * 
+ */
+
+/**
+ * Implments of hook_install().
+ */
+function uc_attribute_files_install() {
+  variable_set('uc_attribute_files_cart_filepath', file_directory_path() . '/cart');
+  variable_set('uc_attribute_files_order_filepath', file_directory_path() . '/orders');
+}
+
+/**
+ * Implements of hook_uninstall().
+ */
+function uc_attribute_files_uninstall() {
+  variable_del('uc_attribute_files_cart_filepath');
+  variable_del('uc_attribute_files_order_filepath');
+	variable_del('uc_attribute_files_attribute_number');
+}

@@ -1,0 +1,67 @@
+<?php
+// $Id: uc_price_visibility.install,v 1.2 2010/11/18 16:17:37 joelstein Exp $
+
+/**
+ * Implementation of hook_install().
+ */
+function uc_price_visibility_install() {
+  drupal_install_schema('uc_price_visibility');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function uc_price_visibility_uninstall() {
+  drupal_uninstall_schema('uc_price_visibility');
+  variable_del('uc_price_visibility_roles');
+  variable_del('uc_price_visibility_message');
+  variable_del('uc_price_visibility_message_field');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function uc_price_visibility_schema() {
+  $schema['uc_price_visibility'] = array(
+    'fields' => array(
+      'nid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+      'roles' => array('type' => 'text'),
+    ),
+    'primary key' => array('nid'),
+  );
+  return $schema;
+}
+
+/**
+ * Converts from one role (anonymous) to multiple roles.
+ */
+function uc_price_visibility_update_6000() {
+  $return = array();
+  $roles = array_keys(user_roles(TRUE));
+
+  // Add "roles" field.
+  db_add_field($return, 'uc_price_visibility', 'roles', array('type' => 'text'));
+
+  // Update existing rows.
+  $return[] = update_sql("UPDATE {uc_price_visibility} SET roles = CONCAT(IF(visible = 1, '". DRUPAL_ANONYMOUS_RID .",', ''), '". implode(',', $roles) ."')");
+
+  // Drop "visible" field.
+  db_drop_field($return, 'uc_price_visibility', 'visible');
+
+  // Set default visibility per role (all non-anonymous should be TRUE).
+  if (variable_get('uc_price_visibility_default', 0)) {
+    $roles[] = DRUPAL_ANONYMOUS_RID;
+  }
+  foreach ($roles as $rid) {
+    $uc_price_visibility_roles[$rid] = $rid;
+  }
+  sort($roles);
+  variable_set('uc_price_visibility_roles', $uc_price_visibility_roles);
+  $return[] = array('success' => TRUE, 'query' => "variable_set('uc_price_visibility_roles')");
+
+  // Remove old variable.
+  variable_del('uc_price_visibility_default');
+  $return[] = array('success' => TRUE, 'query' => "variable_del('uc_price_visibility_default')");
+
+  return $return;
+}

@@ -1,0 +1,998 @@
+<?php
+// $Id: uc_pic_cart_block.module,v 1.3 2009/05/12 16:08:07 vetkhy Exp $
+
+/**
+ * @file
+ * The module of pictured cart block for Ubercart.
+ *
+ * Right in block users can change quantity of items or remove them.
+ * Block has vertical or horisontal orientation with optional jQuery scrolling.
+ */
+
+/**
+ * Implementation of hook_init().
+ */
+function uc_pic_cart_block_init() {
+  drupal_add_css(drupal_get_path('module', 'uc_pic_cart_block') .'/uc_pic_cart_block.css');
+}
+
+/**
+ * Implementation of hook_menu().
+ *
+ * @see uc_pic_cart_block_sortproducts()
+ */
+function uc_pic_cart_block_menu() {
+  $items['uccartpics/sort/%'] = array(
+    'title' => 'Set sort order',
+    'page callback' => 'uc_pic_cart_block_sortproducts',
+    'page arguments' => array(2),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Menu callback for uccartpics/sort/%.
+ *
+ * Only setting session variable actually.
+ *
+ * @param $order
+ *   Sort order, 0 - 6.
+ * @return
+ *   Page with refreshed block or "Access denied"
+ */
+function uc_pic_cart_block_sortproducts($order) {
+  if (is_numeric($order)) {
+    if ($order>=0 && $order<6) {
+      $_SESSION['uc_pic_cart_block_sortorder'] = $order;
+    }
+    else {
+      $_SESSION['uc_pic_cart_block_sortorder'] = 0;
+    }
+    return drupal_goto(uc_referer_uri());
+  }
+  else {
+    return drupal_access_denied();
+  }
+}
+
+/*******************************************************************************
+ * Forms
+ ******************************************************************************/
+ 
+/**
+ * We are using forms to pass item data (and other params).
+ * If product kits used, data is very long, that is why links aren't work.
+ * I hope, forms are more secure than links also.
+ */
+
+/**
+ * Implementation of hook_forms().
+ *
+ * We need unique forms for each product in cart, but constructor of this
+ * forms is the same.
+ *
+ * @ingroup forms
+ * @see uc_pic_cart_block_updateproduct_form()
+ */
+function uc_pic_cart_block_forms() {
+  $forms = array();
+  if (!empty($_SESSION['uc_pic_cart_block_product_count'])) {
+    for ($i=1; $i<=$_SESSION['uc_pic_cart_block_product_count']; $i++) {
+      $forms['uc_pic_cart_block_form_remove_product'. $i] = array(
+        'callback' => 'uc_pic_cart_block_updateproduct_form',
+      );
+      $forms['uc_pic_cart_block_form_inc_product'. $i] = array(
+        'callback' => 'uc_pic_cart_block_updateproduct_form',
+      );
+      $forms['uc_pic_cart_block_form_dec_product'. $i] = array(
+        'callback' => 'uc_pic_cart_block_updateproduct_form',
+      );
+    }
+  }
+  return $forms;
+}
+
+/**
+ * Contructor of updating cart forms.
+ *
+ * @param $form_state
+ *   Standart parameter.
+ * @param $options
+ *   Array that have following structure:
+ *     'title' - title (and alt text also) of the button,
+ *     'img' - path to image,
+ *     'module' - module of product ('uc_product', 'uc_product_kit' etc.),
+ *     'nid' - node ID of product,
+ *     'data' - serialized data of cart item,
+ *     'count' - new count of this item.
+ *
+ * @ingroup forms
+ * @see uc_pic_cart_block_updateproduct_undiv()
+ * @see uc_pic_cart_block_updateproduct_validate()
+ * @see uc_pic_cart_block_updateproduct_submit()
+ */
+function uc_pic_cart_block_updateproduct_form($form_state, $options) {
+  $form = array();
+  $form['#attributes'] = array('class' => 'uc_pic_cart_block_updateproduct_form');
+  
+  // We are using post-render to "undiv" rendered form: we want to
+  // show quantity with inc. and dec. buttons in line.
+  $form['#post_render'] = array('uc_pic_cart_block_updateproduct_undiv');
+  $form['uc_pic_cart_block_updateform_button'] = array(
+    '#type' => 'image_button',
+    '#title' => $options['title'],
+    '#src' => $options['img'],
+    '#attributes' => array('class' => 'uc_pic_cart_block_btn'),
+    '#validate' => array('uc_pic_cart_block_updateproduct_validate'),
+    '#submit' => array('uc_pic_cart_block_updateproduct_submit'),
+  );
+  $form['uc_pic_cart_block_updateform_module'] = array(
+    '#type' => 'value',
+    '#value' => $options['module'],
+  );
+  $form['uc_pic_cart_block_updateform_nid'] = array(
+    '#type' => 'value',
+    '#value' => $options['nid'],
+  );
+  $form['uc_pic_cart_block_updateform_itemdata'] = array(
+    '#type' => 'value',
+    '#value' => $options['data'],
+  );
+  $form['uc_pic_cart_block_updateform_count'] = array(
+    '#type' => 'value',
+    '#value' => $options['count'],
+  );
+  $form['uc_pic_cart_block_updateform_adding'] = array(
+    '#type' => 'value',
+    '#value' => $options['adding'],
+  );
+  
+  return $form;
+}
+
+/**
+ * Implementation of post-render function for update product forms.
+ *
+ * @ingroup forms
+ * @see uc_pic_cart_block_updateproduct_form()
+ *
+ * see http://api.drupal.org/api/file/developer/topics/forms_api_reference.html/7#post_render
+ * Well... It is something from Drupal 7, but works... "Hack"?
+ */
+function uc_pic_cart_block_updateproduct_undiv($content, $form) {
+  $undiv = str_replace(array('<div>', '</div>', "\n"), '', $content);
+  // Deleting \n for IE 6, etc.
+  return $undiv;
+}
+
+/**
+ * Implementation of validate function for update product forms.
+ *
+ * @ingroup forms
+ * @see uc_pic_cart_block_updateproduct_form()
+ */
+function uc_pic_cart_block_updateproduct_validate($form, &$form_state) {
+  if (!is_string($form_state['values']['uc_pic_cart_block_updateform_module'])) {
+    form_set_error('uc_pic_cart_block_updateform_module', t('Not a string'));
+  }
+
+  if (!is_numeric($form_state['values']['uc_pic_cart_block_updateform_nid'])) {
+    form_set_error('uc_pic_cart_block_updateform_nid', t('Not a number'));
+  }
+  
+  if (!is_numeric($form_state['values']['uc_pic_cart_block_updateform_count'])) {
+    form_set_error('uc_pic_cart_block_updateform_count', t('Not a number'));
+  }
+
+  if (!isset($form_state['values']['uc_pic_cart_block_updateform_adding'])) {
+    form_set_error('uc_pic_cart_block_updateform_adding', t('Not set'));
+  }
+  
+  $dataarr = unserialize($form_state['values']['uc_pic_cart_block_updateform_itemdata']);
+  if (!is_array($dataarr)) {
+    form_set_error('uc_pic_cart_block_updateform_itemdata', t('Not an array'));
+  }
+}
+
+/**
+ * Implementation of submit function for update product forms.
+ *
+ * @ingroup forms
+ * @see uc_pic_cart_block_updateproduct_form()
+ */
+function uc_pic_cart_block_updateproduct_submit($form, &$form_state) {
+  $module  = $form_state['values']['uc_pic_cart_block_updateform_module'];
+  $id      = $form_state['values']['uc_pic_cart_block_updateform_nid'];
+  $data    = unserialize($form_state['values']['uc_pic_cart_block_updateform_itemdata']);
+  $count   = $form_state['values']['uc_pic_cart_block_updateform_count'];
+  $adding  = $form_state['values']['uc_pic_cart_block_updateform_adding'];
+  
+  // Standart functions are the best way to update cart item :)
+  if ($adding) {
+    $kit_products = array();
+    // Adding product kit elements with current attributes
+    foreach ($data as $element) {
+      if (is_object($element)) {
+        if ($element->module == 'uc_product_kit') {
+          $kit_products['products'][$element->nid]['nid'] = $element->nid;
+          if (isset($element->data['attributes']) && !empty($element->data['attributes'])) {
+            $kit_products['products'][$element->nid]['attributes'] = $element->data['attributes'];
+          }
+        }
+      }
+    }
+    uc_cart_add_item($id, $adding, $data + $kit_products);
+  }
+  else {
+    module_invoke($module, 'update_cart_item', $id, $data, $count);
+  }
+}
+
+/**
+ * Generator of block settings form.
+ *
+ * @ingroup forms
+ * @see uc_pic_cart_block_block()
+ * @see uc_pic_cart_block_scroll_count_validate()
+ */
+function uc_pic_cart_block_configureform() {
+  $form = array();
+  $form['uc_pic_cart_block_imagecache_preset'] = array(
+    '#type' => 'textfield',
+    '#title' => t('ImageCache preset'),
+    '#description' => t('The name of ImageCache preset for product picture in block. Scale to 50x50 (default "cart" preset) or 64x64 is recommended. Square images or actions like "define canvas" in preset are highly recommended for horisontal orientation.'),
+    '#default_value' => variable_get('uc_pic_cart_block_imagecache_preset', 'cart'),
+  );
+  $form['uc_pic_cart_block_hide_if_empty'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Hide block if cart is empty'),
+    '#default_value' => variable_get('uc_pic_cart_block_hide_if_empty', FALSE),
+  );
+  $form['uc_pic_cart_block_hide_if_cached'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Hide block for unregistered users if caching of pages or blocks enabled'),
+    '#description' => t('Otherwise message will shown.'),
+    '#default_value' => variable_get('uc_pic_cart_block_hide_if_cached', FALSE),
+  );
+  $form['uc_pic_cart_block_show_cart_icon'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Show cart icon in block header'),
+    '#description' => t("Icon doesn't show if block header overriden."),
+    '#default_value' => variable_get('uc_pic_cart_block_show_cart_icon', TRUE),
+  );
+  $form['uc_pic_cart_block_show_sort_header'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Show sort header'),
+    '#default_value' => variable_get('uc_pic_cart_block_show_sort_header', TRUE),
+  );
+  $form['uc_pic_cart_block_increase_first'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Increase first'),
+    '#description' => t('The order of buttons "-" and "+".'),
+    '#default_value' => variable_get('uc_pic_cart_block_increase_first', FALSE),
+  );
+  $form['uc_pic_cart_block_use_currency'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use currency format to show price of item'),
+    '#description' => t('It may cause some artefacts by the word-wrap.'),
+    '#default_value' => variable_get('uc_pic_cart_block_use_currency', FALSE),
+  );
+  $form['uc_pic_cart_block_show_descriptions'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Show descriptions of items in vertical view'),
+    '#description' => t('Selected attributes, content of product kit, etc.'),
+    '#default_value' => variable_get('uc_pic_cart_block_show_descriptions', FALSE),
+  );
+
+  $form['uc_pic_cart_block_scroll_count'] = array(
+    '#type' => 'textfield',
+    '#size' => 4,
+    '#maxlength' => 2,
+    '#element_validate' => array('uc_pic_cart_block_scroll_count_validate'),
+    '#title' => t('Enable scrolling if products more than'),
+    '#description' => t('JavaScript must be enabled for scrolling. 0 - disable scrolling. In this case, a horizontal orientation looks like "large icons", and vertical orientation can be very long.'),
+    '#default_value' => variable_get('uc_pic_cart_block_scroll_count', 0),
+  );
+  $form['uc_pic_cart_block_summary_items'] = array(
+    '#type' => 'radios',
+    '#title' => t('Item count in summary of block is'),
+    '#default_value' => variable_get('uc_pic_cart_block_summary_items', 0),
+    '#options' => array(0 => t('Number of rows in cart table view'), 1 => t('Sum of quanitity of all products')),
+  );
+  $form['uc_pic_cart_block_orientation'] = array(
+    '#type' => 'radios',
+    '#title' => t('Orientation'),
+    '#default_value' => variable_get('uc_pic_cart_block_orientation', 0),
+    '#options' => array(0 => t('Vertical (cart items in rows)'), 1 => t('Horizontal (product pitures in one row)')),
+  );
+  
+  return $form;
+}
+
+/**
+ * Implementation of validate function for "scroll count" field.
+ *
+ * @ingroup forms
+ * @see uc_pic_cart_block_configureform()
+ */
+function uc_pic_cart_block_scroll_count_validate($element, &$form_state) {
+  if (!is_numeric($element['#value']) || ($element['#value'] < 0) || ($element['#value'] > 99)) {
+    form_error($element, t('Scroll count must be integer between 0 and 99'));
+  }
+}
+
+/*******************************************************************************
+ * Block realisation
+ ******************************************************************************/
+ 
+/**
+ * Implementation of hook_block().
+ */
+function uc_pic_cart_block_block($op = 'list', $delta = 0, $edit = array()) {
+  switch ($op) {
+    case 'list':
+      $blocks[0] = array(
+        'info' => t('Pictured cart block'),
+        'cache' => BLOCK_NO_CACHE, // as in uc_cart
+        'region' => 'right',
+        'pages' => "admin*\ncart*\ncheckout*",
+      );
+      return $blocks;
+
+    case 'configure':
+      if ($delta == 0) {
+        return uc_pic_cart_block_configureform();
+      }
+
+    case 'save':
+      variable_set('uc_pic_cart_block_imagecache_preset', $edit['uc_pic_cart_block_imagecache_preset']);
+      variable_set('uc_pic_cart_block_hide_if_empty', $edit['uc_pic_cart_block_hide_if_empty']);
+      variable_set('uc_pic_cart_block_hide_if_cached', $edit['uc_pic_cart_block_hide_if_cached']);
+      variable_set('uc_pic_cart_block_show_cart_icon', $edit['uc_pic_cart_block_show_cart_icon']);
+      variable_set('uc_pic_cart_block_show_sort_header', $edit['uc_pic_cart_block_show_sort_header']);
+      variable_set('uc_pic_cart_block_increase_first', $edit['uc_pic_cart_block_increase_first']);
+      variable_set('uc_pic_cart_block_use_currency', $edit['uc_pic_cart_block_use_currency']);
+      variable_set('uc_pic_cart_block_scroll_count', $edit['uc_pic_cart_block_scroll_count']);
+      variable_set('uc_pic_cart_block_show_descriptions', $edit['uc_pic_cart_block_show_descriptions']);
+      variable_set('uc_pic_cart_block_summary_items', $edit['uc_pic_cart_block_summary_items']);
+      variable_set('uc_pic_cart_block_orientation', $edit['uc_pic_cart_block_orientation']);
+      return;
+
+    case 'view': default:
+      if ($delta == 0) {
+        return uc_pic_cart_block_content();
+      }
+  }
+}
+
+/**
+ * Callback function for custom sort array of cart items.
+ *
+ * We want to sort by name, quantity or sum (price).
+ * We are using $_SESSION param for current sort order.
+ *
+ * See http://www.php.net/manual/en/function.usort.php
+ */
+function _uc_pic_cart_block_sortitems($item1, $item2) {
+  if (!isset($_SESSION['uc_pic_cart_block_sortorder']) || !is_numeric($_SESSION['uc_pic_cart_block_sortorder'])) {
+    $_SESSION['uc_pic_cart_block_sortorder'] = 0;
+  }
+
+  switch ($_SESSION['uc_pic_cart_block_sortorder']) {
+    case 0: // by title asc
+      return strnatcasecmp($item1['title_simple'], $item2['title_simple']);
+      
+    case 1: // by title desc
+      return -strnatcasecmp($item1['title_simple'], $item2['title_simple']);
+      
+    case 2: // by qty asc
+      if ($item1['qty'] > $item2['qty']) {
+        return 1;
+      }
+      elseif ($item1['qty'] < $item2['qty']) {
+        return -1;
+      }
+      else {
+        return strnatcasecmp($item1['title_simple'], $item2['title_simple']);
+      }
+      
+    case 3: // by qty desc
+      if ($item1['qty'] > $item2['qty']) {
+        return -1;
+      }
+      elseif ($item1['qty'] < $item2['qty']) {
+        return 1;
+      }
+      else {
+        return -strnatcasecmp($item1['title_simple'], $item2['title_simple']);
+      }
+      
+    case 4: // by total asc
+      $total1 = $item1['price'];
+      $total2 = $item2['price'];
+      if ($total1 > $total2) {
+        return 1;
+      }
+      elseif ($total1 < $total2) {
+        return -1;
+      }
+      else {
+        return strnatcasecmp($item1['title_simple'], $item2['title_simple']);
+      }
+      
+    case 5: // by total desc
+      $total1 = $item1['price'];
+      $total2 = $item2['price'];
+      if ($total1 > $total2) {
+        return -1;
+      }
+      elseif ($total1 < $total2) {
+        return 1;
+      }
+      else {
+        return -strnatcasecmp($item1['title_simple'], $item2['title_simple']);
+      }
+      
+    default:
+      return 0;
+  }
+    
+}
+
+/**
+ * Getting picture of product.
+ *
+ * @param $node_id
+ *   ID of product node.
+ * @param $preset
+ *   The name of ImageCache preset.
+ * @param $path_module
+ *   Path to this module.
+ * @return
+ *   Themed image (linked to node if can view).
+ *
+ * @see uc_product_get_picture()
+ */
+function uc_pic_cart_block_get_picture($node_id, $preset, $path_module) {
+  $img = '';
+  
+  $product = node_load($node_id);
+  $field = variable_get('uc_image_'. $product->type, '');
+
+  if (isset($product->$field)) {
+    $image = $product->{$field}[0];
+    $path = $image['filepath'];
+    if (file_exists($path)) {
+      $img = theme('imagecache', $preset, $path, $image['data']['alt'], $image['data']['title']);
+    }
+  }
+  
+  if (empty($img)) {// theming default image
+    $img = theme('imagecache', $preset, $path_module .'/img/no_image.gif', t('No pic'), check_plain($product->title) .' ('. t('no picture available') .')');
+  }
+  
+  if (node_access('view', $product)) {
+    $output = l($img, 'node/'. $product->nid, array('html' => TRUE));
+  }
+  else {
+    $output = $img;
+  }
+  
+  return $output;
+}
+
+/**
+ * Generate the content of block.
+ *
+ * @return
+ *   Array which represents the block.
+ *
+ * @see uc_pic_cart_block_block()
+ * @see uc_product_cart_display()
+ * See also uc_cart.module and uc_product.module
+ */
+function uc_pic_cart_block_content() {
+  global $user;
+
+  $block = array(
+    'subject' => '',
+    'content' => '',
+  );
+
+  $path_module = drupal_get_path('module', 'uc_pic_cart_block'); // "cache" for theming images
+  $icon_class = FALSE;
+
+  // Like a standart block, pictured one works correctly only if cache was disabled.
+  // Caching blocks seems to be unsafe too.
+  $cachable = !$user->uid && (variable_get('cache', CACHE_DISABLED) != CACHE_DISABLED || variable_get('block_cache', 0) != 0);
+  
+  if ($cachable) {
+    if (!variable_get('uc_pic_cart_block_hide_if_cached', FALSE)) {
+      // Caching is turned on and the user is not logged in, so we should
+      // deliver a block that is safe for caching.
+      if (variable_get('uc_pic_cart_block_show_cart_icon', TRUE)) {
+        $icon_class = 'empty';
+      }
+      $block['subject'] = theme('uc_pic_cart_block_block_title', t('Shopping cart'), $icon_class, $path_module);
+      $block['content'] = theme('uc_pic_cart_block_content_cachable');
+    }
+    return $block;
+  }
+
+  // Build full block
+
+  $cartcontents = uc_cart_get_contents();
+  $product_count = count($cartcontents);
+  
+  // Subject
+  
+  if (variable_get('uc_pic_cart_block_show_cart_icon', TRUE)) {
+    $icon_class = ($product_count) ? 'full' : 'empty';
+  }
+  $block['subject'] = theme('uc_pic_cart_block_block_title', t('Shopping cart'), $icon_class, $path_module);
+  
+  // Content
+  
+  $items       = array();
+  $preset      = variable_get('uc_pic_cart_block_imagecache_preset', 'cart');
+  $orientation = variable_get('uc_pic_cart_block_orientation', 0);
+
+  if ($product_count) {
+    // Like in a standart cart block we invokes cart_display hook
+    foreach ($cartcontents as $item) {
+      $display_item = module_invoke($item->module, 'cart_display', $item);
+      
+      // See uc_product.module (as basic, or another like uc_product_kit),
+      // function uc_product_cart_display for structure of $display_item.
+      
+      // if product kits or something other like this used, $display_item can be empty
+      
+      if (!empty($display_item)) {
+        $items[] = array(
+          'nid'          => $display_item['nid']['#value'],
+          'qty'          => $display_item['qty']['#default_value'],
+          'title'        => $display_item['title']['#value'],
+          'description'  => $display_item['description']['#value'],
+          'price'        => $display_item['#total'],
+          'data'         => $display_item['data']['#value'],
+          'img'          => uc_pic_cart_block_get_picture($display_item['nid']['#value'], $preset, $path_module, ($orientation == 0)),
+          'title_simple' => check_plain($item->title),
+          'module'       => $display_item['module']['#value'],
+        );
+      }
+    }
+  }
+  
+  $product_count = count($items);
+  
+  $_SESSION['uc_pic_cart_block_product_count'] = $product_count; // to generate needed forms
+  
+  if ($product_count) {
+    $summary_items = variable_get('uc_pic_cart_block_summary_items', 0);
+    $scroll_count  = variable_get('uc_pic_cart_block_scroll_count', 0);
+    $use_scroll    = (($scroll_count > 0) && ($product_count > $scroll_count));
+  
+    if ($use_scroll) {
+      drupal_add_js(drupal_get_path('module', 'uc_pic_cart_block') .'/uc_pic_cart_block_scrolling.js');
+      drupal_add_js(array('ucPicCartBlockUseScroll'    => TRUE,
+                          'ucPicCartBlockOrientation'  => (int) $orientation,
+                          'ucPicCartBlockScrollCount'  => (int) $scroll_count,
+                          'ucPicCartBlockProductCount' => (int) $product_count), 'setting');
+    }
+  
+    //$content = '';
+    if (variable_get('uc_pic_cart_block_show_sort_header', TRUE)) {
+      $content = theme('uc_pic_cart_block_sort_header', $path_module);
+    };
+    usort($items, '_uc_pic_cart_block_sortitems');
+    
+    if ($use_scroll) {
+      $content .= theme('uc_pic_cart_block_scroll_btn', FALSE, $orientation, $path_module);
+    }
+    
+    if ($orientation == 0) { // vertical
+      $content .= '<table id="uc_pic_cart_block_content"><tbody>';
+    }
+    else { // horisontal
+      $content .= '<div id="uc_pic_cart_block_content">';
+    }
+    $content .= "\n";
+    $total = 0;
+    $count = 0;
+    $rownum = 0;
+    $use_curr = variable_get('uc_pic_cart_block_use_currency', FALSE);
+    foreach ($items as $item) {
+      $total += $item['price'];
+      if ($summary_items == 1) {
+        $count += $item['qty'];
+      }
+      $rownum += 1;
+      
+      $content .= theme('uc_pic_cart_block_item', $item, $rownum, $orientation, $use_curr, $path_module) ."\n";
+    }
+    
+    if ($orientation == 0) {
+      $content .= "</tbody></table> <!-- cart content --> \n";
+    }
+    else {
+      $content .= "</div> <!-- cart content --> \n";
+    }
+    
+    if ($use_scroll) {
+      $content .= theme('uc_pic_cart_block_scroll_btn', TRUE, $orientation, $path_module);
+    }
+    
+    if ($summary_items == 0) {
+      $count = $product_count;
+    }
+    if ($orientation !=0) {
+      $content .= '<br />';
+    }
+    $content .= theme('uc_pic_cart_block_summary', $count, $total);
+  }
+  else {
+    if (!variable_get('uc_pic_cart_block_hide_if_empty', FALSE)) {
+      $content .= '<p>'. t('The cart is empty') .'</p>';
+    }
+  }
+  
+  $block['content'] = $content;
+  return $block;
+}
+
+/**
+ * End of main block functions
+ */
+
+/*******************************************************************************
+ * Theming
+ ******************************************************************************/
+
+/**
+ * Implementation of hook_theme().
+ *
+ * @ingroup theme
+ */
+function uc_pic_cart_block_theme() {
+  return array(
+    'uc_pic_cart_block_block_title' => array(
+      'arguments' => array('title' => NULL, 'icon_class' => FALSE, 'path_module' => ''),
+    ),
+    'uc_pic_cart_block_content_cachable' => array(
+      'arguments' => array(),
+    ),
+    'uc_pic_cart_block_sort_header' => array(
+      'arguments' => array('path_module' => ''),
+    ),
+    'uc_pic_cart_block_scroll_btn' => array(
+      'arguments' => array('last' => FALSE, 'orientation' => 0, 'path_module' => ''),
+    ),
+    'uc_pic_cart_block_item' => array(
+      'arguments' => array('item' => NULL, 'rownum' => 0, 'orientation' => 0, use_curr => FALSE, 'path_module' => ''),
+    ),
+    'uc_pic_cart_block_summary' => array(
+      'arguments' => array('count' => 0, 'total' => 0),
+    ),
+  );
+}
+
+/**
+ * Theme the block title.
+ *
+ * Unlike standart block, we haven't collapsing.
+ *
+ * @param $title
+ *   A title text.
+ * @param $icon_class
+ *   'empty' or 'full' will show appropriate icon, false - won't.
+ * @param $path_module
+ *   Path to this module.
+ *
+ * @ingroup theme
+ */
+function theme_uc_pic_cart_block_block_title($title, $icon_class = FALSE, $path_module = '') {
+  $output ='';
+  
+  if (empty($path_module)) return $output;
+  
+  if ($icon_class == 'empty') {
+      $path = $path_module .'/img/cart_empty.gif';
+  }
+  elseif ($icon_class == 'full') {
+    $path = $path_module .'/img/cart_full.gif';
+  }
+  
+  if (!empty($path)) {
+    $output = l(theme('image', $path, '', t('View your shopping cart'), array('class' => 'uc_pic_cart_block_btn')), 'cart', array('html' => TRUE, 'attributes' => array('rel' => 'nofollow'))) .' ';
+  }
+  
+  $output .= '<span class="uc_pic_cart_block_block_title">'. $title .'</span>';
+  return $output;
+}
+
+/**
+ * Theme the cachable block content - message to user.
+ *
+ * @ingroup theme
+ */
+function theme_uc_pic_cart_block_content_cachable() {
+  $output = t('We are sorry, but advanced cart block features are not available for guests with current site settings.');
+  
+  $attr = array('attributes' => array('rel' => 'nofollow'));
+  
+  $output .= ' '. t('Please') .' '. l(t('register'), 'user/register', $attr) .' '. t('or') .' ';
+  $output .= l(t('login'), 'user/login', $attr) .'.';
+  $output .= '<p>'. t('You can also') .' '. l(t('view your cart'), 'cart', $attr) .'.</p>';
+  
+  return $output;
+}
+
+/**
+ * Theme the sort header - "Sort by: name | qty | sum"
+ *
+ * @param $path_module
+ *   Path to this module.
+ *
+ * @ingroup theme
+ */
+function theme_uc_pic_cart_block_sort_header($path_module = '') {
+  if (empty($path_module)) return '';
+
+  $attr = array('attributes' => array('rel' => 'nofollow'));
+  $sortorder = $_SESSION['uc_pic_cart_block_sortorder'];
+  if (!is_numeric($sortorder)) {
+    $sortorder = 0;
+    $_SESSION['uc_pic_cart_block_sortorder'] = 0;
+  }
+  $output = '<p class="uc_pic_cart_block_sort_header">'. t('Sort by') .': ';
+  
+  if ($sortorder % 2) {
+    $arrowup = ' '. theme('image', $path_module .'/img/bullet-arrow-up.gif', t('d'), t('Descending'), array('class' => 'uc_pic_cart_block_btn'));
+  }
+  else {
+    $arrowdown = ' '. theme('image', $path_module .'/img/bullet-arrow-down.gif', t('a'), t('Ascending'), array('class' => 'uc_pic_cart_block_btn'));
+  }
+  
+  $output .= l(t('name'), 'uccartpics/sort/'. (($sortorder==0) ? '1' : '0'), $attr);
+  if ($sortorder == 0)
+    $output .= $arrowdown;
+  elseif ($sortorder == 1)
+    $output .= $arrowup;
+
+  $output .= ' | ';
+  $output .= l(t('qty'), 'uccartpics/sort/'. (($sortorder==2) ? '3' : '2'), $attr);
+  if ($sortorder == 2)
+    $output .= $arrowdown;
+  elseif ($sortorder == 3)
+    $output .= $arrowup;
+
+  $output .= ' | ';
+  $output .= l(t('sum'), 'uccartpics/sort/'. (($sortorder==4) ? '5' : '4'), $attr);
+  if ($sortorder == 4)
+    $output .= $arrowdown;
+  elseif ($sortorder == 5)
+    $output .= $arrowup;
+    
+  $output .= "</p>\n";
+  return $output;
+}
+
+/**
+ * Theme the scroll buttons.
+ *
+ * @param $last
+ *   Boolean. If false, we have the first part of scrolling (e.g. top),
+ *   otherwise - last (e.g. bottom).
+ * @param $orientation
+ *   0 is vertical, other is horisontal.
+ * @param $path_module
+ *   Path to this module.
+ *
+ * @ingroup theme
+ */
+function theme_uc_pic_cart_block_scroll_btn($last = FALSE, $orientation = 0, $path_module = '') {
+  $output = '';
+  if (!is_bool($last) || !is_numeric($orientation) || empty($path_module)) {
+    return $output;
+  }
+  
+  if ($last) {
+    $output .= "</div> <!-- scroll area -->\n";
+  }
+  
+  if (!$last && ($orientation == 0)) {
+    // scroll up
+    $arrowup = theme('image', $path_module .'/img/bullet-arrow-up.gif', '^', '', array('class' => 'uc_pic_cart_block_btn'));
+    $output .= '<div class="uc_pic_cart_block_scroll_up_def">'. $arrowup .'</div>';
+  }
+  elseif ($last && ($orientation == 0)) {
+    // scroll down
+    $arrowdown = theme('image', $path_module .'/img/bullet-arrow-down.gif', 'v', '', array('class' => 'uc_pic_cart_block_btn'));
+    $output .= '<div class="uc_pic_cart_block_scroll_down_def">'. $arrowdown .'</div>';
+  }
+  elseif (!$last) {
+    // scrolling horisontal
+    $arrowleft = theme('image', $path_module .'/img/bullet-arrow-left.gif', '<', '', array('class' => 'uc_pic_cart_block_btn'));
+    $arrowright = theme('image', $path_module .'/img/bullet-arrow-right.gif', '>', '', array('class' => 'uc_pic_cart_block_btn'));
+    $output .= '<div class="uc_pic_cart_block_scroll_left_def">'. $arrowleft .'</div>';
+    $output .= '<div class="uc_pic_cart_block_scroll_right_def">'. $arrowright .'</div>';
+  }
+  
+  if (!$last) {
+    $output .= '<div id="uc_pic_cart_block_scroll_area">';
+  }
+  $output .= "\n";
+  
+  return $output;
+}
+
+/**
+ * Theme the cart item in block.
+ *
+ * @param $item
+ *   Array which represents current cart item:
+ *     'title' - name of product (link to node in most cases),
+ *     'description' - description of product, e.g. attributes, parts of product kit, etc.
+ *     'qty' - quantity of product,
+ *     'price' - price of item,
+ *     'nid' - node ID of product,
+ *     'data' - serialized data of product,
+ *     'img' - full themed image of product,
+ *     'module' - module of product ('uc_product', 'uc_product_kit', etc.).
+ * @param $rownum
+ *   Current row number (we are using odd and even styles).
+ * @param $orientation
+ *   0 is vertical, another is horisontal.
+ * @param $use_curr
+ *   Use or not currency format for item price.
+ * @param $path_module
+ *   Path to this module.
+ *
+ * @ingroup theme
+ * @see uc_pic_cart_block_block()
+ */
+function theme_uc_pic_cart_block_item($item = NULL, $rownum = 0, $orientation = 0, $use_curr = FALSE, $path_module = '') {
+  $output = '';
+  
+  if (!is_array($item) || !is_numeric($orientation) || empty($path_module)) {
+    return $output;
+  }
+
+  // Generating buttons (forms) "remove", "inc.", "dec.".
+
+  $options = array(
+    'img' => $path_module .'/img/remove_product.gif',
+    'title' => 'X',
+    'module' => $item['module'],
+    'count' => 0,
+    'nid' => $item['nid'],
+    'data' => $item['data'],
+    'adding' => FALSE,
+  );
+  
+  $removebtn = drupal_get_form('uc_pic_cart_block_form_remove_product'. $rownum, $options);
+  
+  // Product feature "restrict qty" is supported, so we can add "inc." and "dec." buttons
+  // only if this feature is not used for this product.
+  if ($itemdata['restrict_qty'] != '1') {
+    $options = array(
+      'img' => $path_module .'/img/dec_product.gif',
+      'title' => '-',
+      'module' => $item['module'],
+      'count' => $item['qty']-1,
+      'nid' => $item['nid'],
+      'data' => $item['data'],
+      'adding' => FALSE,
+    );
+    $decbtn = drupal_get_form('uc_pic_cart_block_form_dec_product'. $rownum, $options);
+  
+    $options = array(
+      'img' => $path_module .'/img/inc_product.gif',
+      'title' => '+',
+      'module' => $item['module'],
+      'count' => $item['qty']+1,
+      'nid' => $item['nid'],
+      'data' => $item['data'],
+      'adding' => 1,
+    );
+  
+    $incbtn = drupal_get_form('uc_pic_cart_block_form_inc_product'. $rownum, $options);
+  }
+
+  if ($orientation == 0) {
+    $rowclass = ($rownum % 2) ? 'odd' : 'even';
+    $output .= '<tr class="'. $rowclass .'">';
+    $output .= '<td rowspan=2 class="uc_pic_cart_block_tdpic"><div class="uc_pic_cart_block_productimage">'. $item['img'] .'</div></td>';
+    $output .= '<td colspan=2 class="uc_pic_cart_block_tdtitle">';//. $item['title'];// .'</td>';
+    $output .= '<div class="uc_pic_cart_block_divremove">'. $removebtn .'</div>'. $item['title'] .'</td></tr>'."\n";
+    
+    $use_description = (variable_get('uc_pic_cart_block_show_descriptions', FALSE) && !empty($item['description']));
+    
+    if ($use_description) {
+      $output .= '<tr class="'. $rowclass .'">';
+      $output .= '<td colspan=2 class="uc_pic_cart_block_tddesc">'. $item['description'] .'</td>';
+      $output .= '</tr>';
+    }
+
+    $output .= '<tr class="'. $rowclass .'">';
+    if ($use_description) {
+      $output .= '<td></td>';
+    }
+
+    $output .= '<td class="uc_pic_cart_block_tdqty">';
+  }
+  else {
+    $output .= '<div class="uc_pic_cart_block_item_hor">';
+    $output .= '<div class="uc_pic_cart_block_productimage">'. $item['img'] .'</div>';
+  }
+  
+  $itemdata = unserialize($item['data']);
+  
+  if ($itemdata['restrict_qty'] != '1') {
+    if (variable_get('uc_pic_cart_block_increase_first', FALSE)) {
+      $output .= $incbtn .'<span class="uc_pic_cart_block_spanqty">'. $item['qty'] .'</span>'. $decbtn;
+    }
+    else {
+      $output .= $decbtn .'<span class="uc_pic_cart_block_spanqty">'. $item['qty'] .'</span>'. $incbtn;
+    }
+  }
+  else {
+    $output .= '<span class="uc_pic_cart_block_spanqty">'. $item['qty'] .'</span>';
+    if ($orientation != 0) {
+      $output .= $removebtn;
+    }
+  }
+
+  if ($use_curr) {
+    $price = uc_currency_format($item['price']);
+  }
+  else {
+    $price = $item['price'];
+  }
+
+  if ($orientation == 0) {
+    $output .=  '</td>';
+    $output .= '<td class="uc_pic_cart_block_tdsum"><span class="uc_pic_cart_block_spansum">'. $price .'</span></td>';
+    $output .= '</tr>';
+  }
+  else {
+    $output .= '<br /><span class="uc_pic_cart_block_spansum">'. $price .'</span></div>';
+  }
+
+  return $output;
+}
+
+/**
+ * Theme the block summary.
+ *
+ * @param $count
+ *   How many items are in cart.
+ * @param $total
+ *   How much money we want to spend :)
+ */
+function theme_uc_pic_cart_block_summary($count = 0, $total = 0) {
+  if ($count==0 || $total==0) {
+    return '';
+  }
+  
+  $item_text = format_plural($count, '<span class="num-items">@count</span> Item', '<span class="num-items">@count</span> Items');
+  $output = '<table class="uc_pic_cart_block_summary"><tbody><tr>'
+           .'<td class="uc_pic_cart_block_summary_tditems">'. $item_text .'</td>'
+           .'<td class="uc_pic_cart_block_summary_tdtotal">'. uc_currency_format($total) .'</td></tr>'."\n";
+
+  $attr = array('attributes' => array('rel' => 'nofollow'));
+  $output .= '<tr class="uc_pic_cart_block_summary_links"><td class="uc_pic_cart_block_summary_tdview">';
+  $output .= l(t('View cart'), 'cart', $attr) .'</td><td class="uc_pic_cart_block_summary_tdcheckout">';
+  if (variable_get('uc_checkout_enabled', TRUE)) {
+    $output .= l(t('Checkout'), 'cart/checkout', $attr) .'</td></tr>';
+  }
+  else {
+    $output .= '</td></tr>';
+  }
+
+  $output .= "</tbody></table>\n";
+
+  return $output;
+}

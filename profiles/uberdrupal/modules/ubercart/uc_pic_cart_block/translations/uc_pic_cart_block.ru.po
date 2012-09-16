@@ -1,0 +1,238 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: uc_pic_cart_block\n"
+"POT-Creation-Date: 2009-05-12 19:53+0400\n"
+"PO-Revision-Date: \n"
+"Last-Translator: Dmitriy Kosolapov <kosolapov.d@gmail.com>\n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-Language: Russian\n"
+"X-Poedit-Country: RUSSIAN FEDERATION\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#: uc_pic_cart_block.module:184
+msgid "Not a string"
+msgstr "Не строка"
+
+#: uc_pic_cart_block.module:188;192
+msgid "Not a number"
+msgstr "Не число"
+
+#: uc_pic_cart_block.module:196
+msgid "Not set"
+msgstr "Не установлено"
+
+#: uc_pic_cart_block.module:201
+msgid "Not an array"
+msgstr "Не массив"
+
+#: uc_pic_cart_block.module:250
+msgid "ImageCache preset"
+msgstr "Пресет ImageCache"
+
+#: uc_pic_cart_block.module:251
+msgid "The name of ImageCache preset for product picture in block. Scale to 50x50 (default \"cart\" preset) or 64x64 is recommended. Square images or actions like \"define canvas\" in preset are highly recommended for horisontal orientation."
+msgstr "Название пресета ImageCache для отображения иконки товара в блоке.  Рекомендуется изменение размера до 50х50 (типовой пресет \"cart\") или 64х64. В случае горизонтальной ориентации настоятельно рекомендуется использовать квадратные картинки для товаров или действия наподобие \"define canvas\" в пресете ImageCache."
+
+#: uc_pic_cart_block.module:256
+msgid "Hide block if cart is empty"
+msgstr "Скрывать блок, если корзина пуста"
+
+#: uc_pic_cart_block.module:261
+msgid "Hide block for unregistered users if caching of pages or blocks enabled"
+msgstr "Не показывать блок гостям, если включено кэширование страниц или блоков"
+
+#: uc_pic_cart_block.module:262
+msgid "Otherwise message will shown."
+msgstr "В противном случае будет показано соответствующее сообщение."
+
+#: uc_pic_cart_block.module:267
+msgid "Show cart icon in block header"
+msgstr "Отображать иконку корзины в заголовке блока"
+
+#: uc_pic_cart_block.module:268
+msgid "Icon doesn't show if block header overriden."
+msgstr "Если заголовок блока переопределен, то иконка отображаться не будет."
+
+#: uc_pic_cart_block.module:273
+msgid "Show sort header"
+msgstr "Отображать строку для сортировки товаров"
+
+#: uc_pic_cart_block.module:278
+msgid "Increase first"
+msgstr "Плюс в начале"
+
+#: uc_pic_cart_block.module:279
+msgid "The order of buttons \"-\" and \"+\"."
+msgstr "Порядок кнопок \"-\" и \"+\"."
+
+#: uc_pic_cart_block.module:284
+msgid "Use currency format to show price of item"
+msgstr "Использовать денежный формат для цены товаров"
+
+#: uc_pic_cart_block.module:285
+msgid "It may cause some artefacts by the word-wrap."
+msgstr "Это может вызвать нежелательные эффекты из-за переносов слов."
+
+#: uc_pic_cart_block.module:290
+msgid "Show descriptions of items in vertical view"
+msgstr "Отображать дополнительную информацию о товаре в вертикальном варианте"
+
+#: uc_pic_cart_block.module:291
+msgid "Selected attributes, content of product kit, etc."
+msgstr "Выбранные атрибуты, состав набора и т.д."
+
+#: uc_pic_cart_block.module:300
+msgid "Enable scrolling if products more than"
+msgstr "Использовать прокрутку, если позиций более"
+
+#: uc_pic_cart_block.module:301
+msgid "JavaScript must be enabled for scrolling. 0 - disable scrolling. In this case, a horizontal orientation looks like \"large icons\", and vertical orientation can be very long."
+msgstr "Для работы этой функции у пользователя должен быть включен JavaScript. 0 - отключение функции прокрутки. В этом случае горизонтальное представление выглядит как  \"значки\" в проводнике, а в вертикальном режиме блок может оказаться слишком длинным."
+
+#: uc_pic_cart_block.module:306
+msgid "Item count in summary of block is"
+msgstr "Количество в подвале блока - это"
+
+#: uc_pic_cart_block.module:308
+msgid "Number of rows in cart table view"
+msgstr "Количество позиций (строк в таблице на экране корзины)"
+
+#: uc_pic_cart_block.module:308
+msgid "Sum of quanitity of all products"
+msgstr "Сумма количества всех товаров"
+
+#: uc_pic_cart_block.module:312
+msgid "Orientation"
+msgstr "Ориентация"
+
+#: uc_pic_cart_block.module:314
+msgid "Vertical (cart items in rows)"
+msgstr "Вертикальная (один позиция на строку)"
+
+#: uc_pic_cart_block.module:314
+msgid "Horizontal (product pitures in one row)"
+msgstr "Горизонтальная (иконки товаров располагаются в ряд)"
+
+#: uc_pic_cart_block.module:328
+msgid "Scroll count must be integer between 0 and 99"
+msgstr "Количество позиций для активации скроллинга должно быть числом от 0 до 99"
+
+#: uc_pic_cart_block.module:343
+#: uc_pic_cart_block.info:0
+msgid "Pictured cart block"
+msgstr "Блок корзины с картинками"
+
+#: uc_pic_cart_block.module:479
+msgid "No pic"
+msgstr "Нет изоб."
+
+#: uc_pic_cart_block.module:479
+msgid "no picture available"
+msgstr "изображение отсутствует"
+
+#: uc_pic_cart_block.module:524;540
+msgid "Shopping cart"
+msgstr "Корзина"
+
+#: uc_pic_cart_block.module:644
+msgid "The cart is empty"
+msgstr "Корзина пуста"
+
+#: uc_pic_cart_block.module:715
+msgid "View your shopping cart"
+msgstr "Просмотр корзины"
+
+#: uc_pic_cart_block.module:728
+msgid "We are sorry, but advanced cart block features are not available for guests with current site settings."
+msgstr "К сожалению, при текущих настройках сайта дополнительные функции блока для гостей недоступны."
+
+#: uc_pic_cart_block.module:732
+msgid "Please"
+msgstr "Пожалуйста"
+
+#: uc_pic_cart_block.module:732
+msgid "register"
+msgstr "зарегистрируйтесь"
+
+#: uc_pic_cart_block.module:732
+msgid "or"
+msgstr "или"
+
+#: uc_pic_cart_block.module:733
+msgid "login"
+msgstr "войдите под своим именем"
+
+#: uc_pic_cart_block.module:734
+msgid "You can also"
+msgstr "Вы также можете"
+
+#: uc_pic_cart_block.module:734
+msgid "view your cart"
+msgstr "просмотреть корзину"
+
+#: uc_pic_cart_block.module:756
+msgid "Sort by"
+msgstr "Сорт. по"
+
+#: uc_pic_cart_block.module:759
+msgid "d"
+msgstr "у"
+
+#: uc_pic_cart_block.module:759
+msgid "Descending"
+msgstr "По убыванию"
+
+#: uc_pic_cart_block.module:762
+msgid "a"
+msgstr "в"
+
+#: uc_pic_cart_block.module:762
+msgid "Ascending"
+msgstr "По возрастанию"
+
+#: uc_pic_cart_block.module:765
+msgid "name"
+msgstr "наим"
+
+#: uc_pic_cart_block.module:772
+msgid "qty"
+msgstr "кол"
+
+#: uc_pic_cart_block.module:779
+msgid "sum"
+msgstr "сум"
+
+#: uc_pic_cart_block.module:995
+msgid "View cart"
+msgstr "Просмотр корзины"
+
+#: uc_pic_cart_block.module:997
+msgid "Checkout"
+msgstr "Оформление заказа"
+
+#: uc_pic_cart_block.module:988
+msgid "<span class=\"num-items\">@count</span> Item"
+msgid_plural "<span class=\"num-items\">@count</span> Items"
+msgstr[0] "<span class=\"num-items\">@count</span> позиция"
+msgstr[1] "<span class=\"num-items\">@count</span> позиции"
+msgstr[2] "<span class=\"num-items\">@count</span> позиций"
+
+#: uc_pic_cart_block.module:26
+msgid "Set sort order"
+msgstr "Установить порядок сортировки"
+
+#: uc_pic_cart_block.module:0
+msgid "uc_pic_cart_block"
+msgstr "Блок корзины с изображениями товаров"
+
+#: uc_pic_cart_block.info:0
+msgid "Cart block with product image and buttons to manipulate items."
+msgstr "Блок корзины с изображениями товаров и кнопками управления."
+
+#: uc_pic_cart_block.info:0
+msgid "Ubercart - extra"
+msgstr ""
+

@@ -1,0 +1,12 @@
+name = FreightQuote
+version = 6.x-1.x-dev
+description = FreightQuote integration for Ubercart
+core = 6.x
+dependencies[] = uc_quote
+package = Ubercart - fulfillment
+; Information added by drupal.org packaging script on 2011-11-23
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "uc_freightquote"
+datestamp = "1322009838"
+

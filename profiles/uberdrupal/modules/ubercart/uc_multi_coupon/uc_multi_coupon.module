@@ -1,0 +1,657 @@
+<?php
+// $Id: uc_multi_coupon.module,v 1.1 2010/12/09 08:39:53 sijumpk Exp $ 
+
+/*
+ * Implementation of hook_menu
+ */
+function uc_multi_coupon_menu() {
+  $items = array();
+  $items['cart/checkout/couponMulti'] = array(
+    'title' => 'Apply coupon',
+    'page callback' => 'uc_multi_coupon_checkout_apply',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['ucCouponMulti/js'] = array(
+    'title' => 'Apply coupon',
+    'page callback' => 'uc_multi_coupon_add_coupon_element',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['ucCouponMulti/checkout/js'] = array(
+    'title' => 'Apply coupon',
+    'page callback' => 'uc_multi_coupon_add_coupon_checkout_element',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/*
+ * Implementation of hook_form_alter
+ */
+function uc_multi_coupon_form_alter(&$form, &$form_state, $form_id) {
+  if($form_id == 'uc_order_settings_form') {
+    $form['buttons']['#weight'] = 10;
+    $form['multi_coupon'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Coupon settings'),
+      '#collapsible' => FALSE,
+      '#collapsed' => FALSE,
+      '#weight' => 9,
+    );
+    $form['multi_coupon']['uc_multi_coupon_enabled'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Enable multiple coupon discount'),
+      '#default_value' => variable_get('uc_multi_coupon_enabled', FALSE),
+    );
+    $form['#submit'][] = 'uc_multi_coupon_order_setting_form_submit';
+  }
+  if($form_id == 'uc_cart_cart_panes_form') {
+    $form['#validate'][] = 'uc_multi_coupon_cart_panes_form_validate';
+  }
+  if($form_id == 'uc_cart_checkout_panes_form') {
+    $form['#validate'][] = 'uc_multi_coupon_cart_panes_form_validate';
+  }
+}
+
+/*
+ * Additional validation function for cart and checkout panes
+ */
+function uc_multi_coupon_cart_panes_form_validate($form, &$form_state) {
+  if($form_state['values']['uc_cap_coupon_enabled'] && $form_state['values']['uc_cap_multi_coupon_enabled']) {
+    form_set_error('uc_cap_multi_coupon_enabled', 'You cannot enable multiple coupon discount with normal coupon discount');
+  }
+  if($form_state['values']['uc_pane_coupon_enabled'] && $form_state['values']['uc_pane_multi_coupon_enabled']) {
+    form_set_error('uc_pane_multi_coupon_enabled', 'You cannot enable multiple coupon discount with normal coupon discount');
+  }
+}
+
+/*
+ * Additional submission action for order_setting_form
+ */
+function uc_multi_coupon_order_setting_form_submit($form, &$form_state) {
+  if($form_state['values']['uc_multi_coupon_enabled']) {
+    variable_set('uc_pane_coupon_enabled', FALSE);
+    variable_set('uc_pane_multi_coupon_enabled', TRUE);
+    variable_set('uc_cap_coupon_enabled', FALSE);
+    variable_set('uc_cap_multi_coupon_enabled', TRUE);
+  }
+  else {
+    variable_set('uc_pane_coupon_enabled', TRUE);
+    variable_set('uc_pane_multi_coupon_enabled', FALSE);
+    variable_set('uc_cap_coupon_enabled', TRUE);
+    variable_set('uc_cap_multi_coupon_enabled', FALSE);
+  }
+}
+
+function uc_multi_coupon_init() {
+  drupal_add_js(drupal_get_path('module', 'uc_multi_coupon') .'/uc_multi_coupon.js');
+  drupal_add_js(array(
+    'ucmURL' => array(
+      'applyCoupon' => url('cart/checkout/couponMulti'),
+      'getNewElement' => url('ucCouponMulti/checkout/js'),
+    ),
+  ), 'setting');
+}
+
+/**
+ * Implementation of hook_cart_pane().
+ */
+function uc_multi_coupon_cart_pane($items) {
+  $panes[] = array(
+    'id' => 'multi_coupon',
+    'body' => drupal_get_form('uc_cart_pane_multi_coupon'),
+    'title' => t('Multiple coupon discount'),
+    'desc' => t('Allows shoppers to use multiple coupons during checkout for order discounts.'),
+    'weight' => 1,
+    'enabled' => TRUE,
+  );
+  return $panes;
+}
+
+/**
+ * Cart pane coupon form.
+ */
+function uc_cart_pane_multi_coupon($form_state) {
+  $form['code_multi'] = array(
+    '#tree' => TRUE,
+    '#weight' => '-10',
+  );
+  for($i=1;$i<=1;$i++) {
+    $form['code_multi'][] = array(
+      '#type' => 'textfield',
+      '#title' => t('Coupon code'),
+  	  '#description' => variable_get('uc_coupon_pane_description', t('Enter a coupon code for this order.')),
+      '#size' => 25,
+      '#weight' => '-1000',
+    );
+  }
+  $form['add_another'] = array(
+    '#type' => 'submit',
+    '#value' => t('Add another coupon'),
+    '#weight' => 19,
+    '#prefix' => '<div id="uc_multi_coupon_below"></div>',
+    '#ahah' => array(
+      'event' => 'click',
+      'path' => 'ucCouponMulti/js',
+      'wrapper' => 'uc_multi_coupon_below',
+      'method' => 'before',
+  ),
+  );
+  $form['apply'] = array(
+    '#type' => 'submit',
+    '#weight' => 20,
+    '#value' => t('Apply to order'),
+  );
+  return $form;
+}
+
+/**
+ * Cart pane coupon form validation action
+ */
+function uc_cart_pane_multi_coupon_validate($form, &$form_state) {
+  if ($form_state['values']['code_multi'] && is_array($form_state['values']['code_multi'])) {
+    foreach($form_state['values']['code_multi'] as $index => $code) {
+      if($code) {
+        $coupon = uc_coupon_validate($code);
+        if (!$coupon->valid) {
+          form_set_error('code_multi]['.$index, $coupon->message);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Cart pane coupon form submission action
+ */
+function uc_cart_pane_multi_coupon_submit($form, &$form_state) {
+  if ($form_state['values']['code_multi'] && is_array($form_state['values']['code_multi'])) {
+    foreach($form_state['values']['code_multi'] as $code) {
+      if($code) {
+        $coupon = uc_coupon_validate($code);
+        if (!$coupon->valid) {
+          unset($_SESSION['uc_coupon_multi'][$code]);
+          drupal_set_message($coupon->message, 'error');
+        }
+        else {
+          if(!$_SESSION['uc_coupon_multi'] || !is_array($_SESSION['uc_coupon_multi'])) {
+            $_SESSION['uc_coupon_multi'] = array();
+          }
+          $_SESSION['uc_coupon_multi'][$code] = $code;
+          drupal_set_message(t('A coupon discount of !amount will be deducted from your order total at checkout.', array('!amount' => uc_currency_format($coupon->amount))));
+        }
+      }
+    }
+  }
+}
+
+/*
+ * Implementation of hook_order
+ */
+function uc_multi_coupon_order($op, &$arg1, $arg2) {
+  if ($op == 'save' && isset($_SESSION['uc_coupon_multi']) && is_array($_SESSION['uc_coupon_multi'])) {
+    $result = uc_multi_coupon_validate($_SESSION['uc_coupon_multi']);
+    if ($result->valid) {
+      _uc_multi_coupon_apply_to_order($arg1->order_id, $result);
+    }
+    unset($_SESSION['uc_coupon_multi']);
+  }
+}
+
+/**
+ * Implementation of hook_checkout_pane().
+ */
+function uc_multi_coupon_checkout_pane() {
+  $panes[] = array(
+    'id' => 'multi_coupon',
+    'callback' => 'uc_checkout_pane_multi_coupon',
+    'title' => t('Multiple coupon discount'),
+    'desc' => t('Allows shoppers to use multiple coupons during checkout for order discounts.'),
+    'weight' => 5,
+    'process' => TRUE,
+  );
+  return $panes;
+}
+
+/**
+ * Checkout Pane callback function.
+ */
+function uc_checkout_pane_multi_coupon($op, &$arg1, $arg2) {
+  switch ($op) {
+    case 'view':
+      $codes = array();
+      if ($_SESSION['uc_coupon_multi'] && is_array($_SESSION['uc_coupon_multi'])) {
+        foreach($_SESSION['uc_coupon_multi'] as $code) {
+          $codes[] = $code;
+        }
+        $_SESSION['uc_coupon_multi'] = array();
+      }
+      else {
+        $codes = $arg1->data['code_multi'];
+      }
+      
+      $result = uc_multi_coupon_validate($codes);
+      if ($result->valid) {
+        drupal_add_js('$(document).ready(function() {
+          if (window.set_line_item) {
+            set_line_item("multi_coupon", "'. $result->title .'", '. -$result->amount .', 3);
+          }
+        });', 'inline');
+      }
+      
+      $description = variable_get('uc_coupon_pane_description', t('Enter a coupon code for this order.'));
+      $contents['code_multi'] = array(
+        '#tree' => TRUE,
+        '#weight' => '-10',
+      );
+      $codes_copy = $codes;
+      if(is_array($codes)) {
+        foreach($codes as $code) {
+          if($code) {
+            $contents['code_multi'][$code] = array(
+              '#type' => 'textfield',
+              '#title' => t('Coupon code'),
+              '#description' => variable_get('uc_coupon_pane_description', t('Enter a coupon code for this order.')),
+              '#value' => $code,
+              '#size' => 25,
+              '#weight' => '-1000',
+              '#attributes' => array('class' => 'edit-panes-multi-coupon-code'),
+            );
+          }
+        }
+      }
+      $index = time();
+      $contents['code_multi'][$index] = array(
+        '#type' => 'textfield',
+        '#title' => t('Coupon code'),
+        '#description' => variable_get('uc_coupon_pane_description', t('Enter a coupon code for this order.')),
+        '#size' => 25,
+        '#weight' => '0',
+        '#attributes' => array('class' => 'edit-panes-multi-coupon-code'),
+      );
+      $contents['add_another'] = array(
+        '#type' => 'submit',
+        '#value' => t('Add another coupon'),
+        '#weight' => 19,
+        '#prefix' => '<div id="uc_multi_coupon_below"></div>',
+        '#attributes' => array('class' => 'uc_multi_coupon_checkout_addmore'),
+      );
+      $contents['apply'] = array(
+        '#type' => 'button',
+        '#value' => t('Apply to order'),
+        '#weight' => 20,
+        '#attributes' => array('onclick' => "ucMultiCoupon.getMultiCoupon(); return false;"),
+      );
+      return array('description' => $description, 'contents' => $contents);
+
+    case 'process':
+      $error = 0;
+      $arg2['code_multi'] = array();
+      if(isset($_POST['panes']['multi_coupon']['code_multi']) && is_array($_POST['panes']['multi_coupon']['code_multi']) && count(array_filter($_POST['panes']['multi_coupon']['code_multi']))) {
+        foreach($_POST['panes']['multi_coupon']['code_multi'] as $code) {
+          $arg2['code_multi'][$code] = $code;
+        }
+      }
+      foreach($arg2['code_multi'] as $code) {
+        if ($code) {
+          $arg1->data['code_multi'][$code] = $code;
+          $coupon = uc_coupon_validate($code);
+          if (!$coupon->valid) {
+            form_set_error('panes][multi_coupon][code_multi]['.$code, $coupon->message);
+            $error = 1;
+          }
+        }
+      }
+      if($error) {
+        return FALSE;
+      }
+      $result = uc_multi_coupon_validate($arg2['code_multi']);
+      _uc_multi_coupon_apply_to_order($arg1->order_id, $result);
+      return TRUE;
+  }
+}
+
+/**
+ * Checkout pane AJAX callback.
+ **/
+function uc_multi_coupon_checkout_apply() {
+  $applied_mesage = $error_message = '';
+  $return  = (object) array('error' => 0, 'applied' => 0);
+  $error_items = $applied_coupons = $applicable_coupons = array();
+  $codes = $_POST;
+  if(!is_array($_POST)) $codes = array();
+  foreach($codes as $i => $code) {
+    $code = trim($code);
+    $coupon = uc_coupon_validate($code);
+    if ($coupon->valid) {
+      if(!in_array($code, $applied_coupons)) {
+        $applied_mesage = t('The coupon has been applied to your order.');
+        $return->applied = 1;
+        $applicable_coupons[] = $code;
+      }
+    }
+    else {
+      $error_items[] = $i;
+      $return->error = 1;
+      $error_message = $coupon->message;
+    }
+  }
+  $result = uc_multi_coupon_validate($applicable_coupons);
+  $return->error_items = (object) $error_items;
+  $return->message = $applied_mesage;
+  $return->error_message = $error_message;
+  $return->amount = $result->amount;
+  $return->title = $result->title ;
+  drupal_json($return);
+  exit();
+}
+
+/*
+ * Ahah callback in checkout pane
+ */
+function uc_multi_coupon_add_coupon_checkout_element() {
+  $form = array();
+  $form['panes'] = array(
+    '#tree' => TRUE,
+  	'#weight' => '-10',
+  );
+  $form['panes']['multi_coupon'] = array(
+    '#tree' => TRUE,
+    '#weight' => '-10',
+  );
+  $form['panes']['multi_coupon'] ['code_multi'] = array(
+    '#tree' => TRUE,
+    '#weight' => '-10',
+  );
+  $index = time();
+  $form['panes']['multi_coupon']['code_multi'][$index] = array(
+    '#type' => 'textfield',
+    '#title' => t('Coupon code'),
+	'#description' => variable_get('uc_coupon_pane_description', t('Enter a coupon code for this order.')),
+    '#size' => 25,
+  	'#weight' => '-1000',
+    '#attributes' => array('class' => 'edit-panes-multi-coupon-code'),
+  );
+  $form = form_builder($_POST['form_id'], $form, $form_state);
+  $output = drupal_render($form) ;
+  print drupal_to_js(array('status' => TRUE, 'data' => $output));
+  exit;
+}
+
+/**
+ * Create or update the multiple coupon line item in an order.
+ */
+function _uc_multi_coupon_apply_to_order($order_id, $result) {
+  $lid = db_result(db_query("SELECT line_item_id FROM {uc_order_line_items} WHERE order_id = %d AND type = 'multi_coupon'", $order_id));
+  if ($lid) {
+    foreach($result->coupons as $coupon) {
+      db_query("UPDATE {uc_coupons_orders} SET code = '%s', value = %f WHERE oid = %d AND cid = %d", $coupon->code, $coupon->amount, $order_id, $coupon->cid);
+    }
+    uc_order_update_line_item($lid, $result->title, -$result->amount);
+  }
+  else {
+    foreach($result->coupons as $coupon) {
+      db_query("INSERT INTO {uc_coupons_orders} (cid, oid, code, value) VALUES (%d, %d, '%s', %f)", $coupon->cid, $order_id, $coupon->code, $coupon->amount);
+    }
+    uc_order_line_item_add($order_id, 'multi_coupon', $result->title, -$result->amount);
+  }
+}
+
+/**
+ * Implementation of hook_line_item().
+ */
+function uc_multi_coupon_line_item() {
+  $items[] = array(
+    'id' => 'multi_coupon',
+    'title' => t('Multi Coupon discount'),
+    'weight' => 2,
+    'default' => FALSE,
+    'stored' => TRUE,
+    'add_list' => TRUE,
+    'calculated' => TRUE,
+  );
+  return $items;
+}
+
+/*
+ * Function to add additional coupon element to the cart pane
+ */
+function uc_multi_coupon_add_coupon_element() {
+  $form_state = array('submitted' => FALSE);
+  $form_build_id = $_POST['form_build_id'];
+  $form = form_get_cache($form_build_id, $form_state);
+  if (!$form) {
+    drupal_json(array('data' => ''));
+    exit;
+  }
+  $form_copy = $form;
+  $form_state_copy = $form_state;
+  $form_copy['#post'] = array();
+  form_builder($_POST['form_id'], $form_copy, $form_state_copy);
+  $form_state['values'] = $form_state_copy['values'];
+  form_clean_id(NULL, TRUE);
+  $index = time();
+  $form['code_multi'][$index] = array(
+    '#type' => 'textfield',
+    '#title' => t('Coupon code'),
+	'#description' => variable_get('uc_coupon_pane_description', t('Enter a coupon code for this order.')),
+    '#size' => 25,
+  	'#weight' => '-1000',
+  );
+  $form_state['values'] = array();
+  form_set_cache($form_build_id, $form, $form_state);
+  $form_state = array('submitted' => FALSE);
+  $form += array(
+    '#post' => $_POST,
+    '#programmed' => FALSE,
+  );
+  $form = form_builder($_POST['form_id'], $form, $form_state);
+  $output = drupal_render($form['code_multi'][$index]) ;
+  print drupal_to_js(array('status' => TRUE, 'data' => $output));
+  exit;
+}
+
+/*
+ * Multiple coupon validation fucntion
+ */
+function uc_multi_coupon_validate($codes) {
+  global $user;
+  $result = (object) array();
+  $result->valid = FALSE;
+  $result->coupons = $result->invalid_coupons = array();
+  $result->amount = 0;
+  if(!is_array($codes)) {
+    return $result;
+  }
+  $percentage_coupons = array();
+  $price_coupons = array();
+  foreach($codes as $code) {
+    $code = trim(strtoupper($code));
+    $coupon = uc_coupon_find($code);
+    if ($coupon) {
+      // Spliting percentage coupons and price coupons
+      switch($coupon->type) {
+        case 'percentage':
+          $percentage_coupons[] = $coupon;
+          break;
+        case 'price':
+          $price_coupons[] = $coupon;
+          break;
+      }
+  
+      //  CHECK MAX USES
+      if ($coupon->max_uses > 0) {
+        $used = db_result(db_query("SELECT COUNT(*) FROM {uc_coupons_orders} AS uco LEFT JOIN {uc_orders} AS uo ON uco.oid = uo.order_id LEFT JOIN {uc_order_statuses} AS uos ON uo.order_status = uos.order_status_id WHERE uos.weight > 0 AND uco.cid = %d AND uco.code = '%s'", $coupon->cid, $code));
+        if ($used >= $coupon->max_uses) {
+          $coupon->message = t('This coupon has reached the maximum redemption limit.');
+          $result->invalid_coupons[] = $coupon;
+        }
+      }
+    
+      //  CHECK MAX USES PER USER
+      if (isset($coupon->data['max_uses_per_user'])) {
+        $used = db_result(db_query("SELECT COUNT(*) FROM {uc_coupons_orders} AS uco LEFT JOIN {uc_orders} AS uo ON uco.oid = uo.order_id LEFT JOIN {uc_order_statuses} AS uos ON uo.order_status = uos.order_status_id WHERE uos.weight > 0 AND uco.cid = %d AND uo.uid = %d", $coupon->cid, $user->uid));
+        if ($used >= $coupon->data['max_uses_per_user']) {
+          $coupon->message = t('This coupon has reached the maximum redemption limit.');
+          $result->invalid_coupons[] = $coupon;
+        }
+      }
+    
+      //  CHECK MINIMUM PURCHASE VALUE
+      if ($coupon->minimum_order > 0 && $coupon->minimum_order > $cart_total) {
+        $coupon->message = t('You have not reached the minimum order total for this coupon.');
+        $result->invalid_coupons[] = $coupon;
+      }
+    
+      //  CHECK USER ID
+      if (isset($coupon->data['users'])) {
+        if (!in_array("$user->uid", $coupon->data['users'], TRUE)) {
+          $coupon->message = t('Your user ID is not allowed to use this coupon.');
+          $result->invalid_coupons[] = $coupon;
+        }
+      }
+    
+      // CHECK ROLES
+      if (isset($coupon->data['roles'])) {
+        $role_found = FALSE;
+        foreach ($coupon->data['roles'] as $role) {
+          if (in_array($role, $user->roles)) {
+            $role_found = TRUE;
+            break;
+          }
+        }
+        if (!$role_found) {
+          $coupon->message = t('You do not have the correct permission to use this coupon.');
+          $result->invalid_coupons[] = $coupon;
+        }
+      }
+    
+      // CHECK USER PERMISSIONS
+      // 1 - both wholesale and retail any user
+      // 2 - wholesale only -> users with 'coupon wholesale pricing'
+      // 3 - retail only -> users without 'coupon wholesale pricing'
+      if ($coupon->data['wholesale'] > 1) {
+        if ($coupon->data['wholesale'] == 2) {
+          if (!user_access('coupon wholesale pricing')) {
+            $coupon->message = t('You do not have the correct permission to use this coupon.');
+            $result->invalid_coupons[] = $coupon;
+          }
+        }
+        else if ($coupon->data['wholesale'] == 3) {
+          if (user_access('coupon wholesale pricing')) {
+            $coupon->message = t('You do not have the correct permission to use this coupon.');
+            $result->invalid_coupons[] = $coupon;
+          }
+        }
+      }
+    }
+  }
+  
+  $coupons = array_merge($price_coupons, $percentage_coupons);
+  if (count($result->invalid_coupons) || (!count($coupons))) {
+    return $result;
+  }
+    
+  // Make price coupon come first in the coupons array
+  $items = $prices = array();
+  $cart_total = 0;
+  foreach (uc_cart_get_contents() as $item) {
+    $items = array_pad($items, count($items)+$item->qty, $item);
+    $prices = array_pad($prices, count($prices)+$item->qty, $item->price);
+    $cart_total += $item->qty * $item->price;
+  }
+  
+  foreach($coupons as $coupon_index => $coupon) {
+    $coupon_start_total = array_sum($prices);
+    foreach($prices as $item_index => $price) {
+      if(!$price) unset($prices[$item_index]);
+    }
+    if (isset($coupon->data['products']) || isset($coupon->data['skus']) || isset($coupon->data['terms']) || isset($coupon->data['product_types'])) {
+      // Product coupons apply to the subtotal and quantity of matching products.
+      $applicable_item_indexes = array();
+      foreach($items as $item_index => $item) {
+        $terms = array();
+        $query = db_query("SELECT tid FROM {term_node} WHERE vid = %d", $item->vid);
+        while ($tid = db_result($query)) {
+          $terms[] = $tid;
+        }
+        if (isset($coupon->data['products']) && (isset($coupon->data['negate_products']) xor in_array($item->nid, $coupon->data['products']))) {
+          $applicable_item_indexes[] = $item_index;
+        }
+        else if (isset($coupon->data['skus']) && in_array($item->model, $coupon->data['skus'])) {
+          $applicable_item_indexes[] = $item_index;
+        }
+        else if (isset($coupon->data['terms']) && (isset($coupon->data['negate_terms']) xor count(array_intersect($terms, $coupon->data['terms'])))) {
+          $applicable_item_indexes[] = $item_index;
+        }
+        else if (isset($coupon->data['product_types'])) {
+          $type = db_result(db_query("SELECT type FROM {node} WHERE nid = %d", $item->nid));
+          if (in_array($type, $coupon->data['product_types'])) {
+            $applicable_item_indexes[] = $item_index;
+          }
+        }
+      }
+      
+      if(count($applicable_item_indexes)) {
+        // If a maximum number of applicable products has been specified...
+        if (isset($coupon->data['max_applicable_products']) && ($num = $coupon->data['max_applicable_products']) > 0) {
+          // Slice the appropriate number of prices off the array.
+          if ($coupon->data['max_applicable_products_value'] == 'cheapest') {
+            $function = 'asort';
+          }
+          else {
+            $function = 'arsort';
+          }
+          $function($prices);
+          $sliced_item_indexes = array_slice(array_keys($prices), 0, $num);
+          foreach($sliced_item_indexes as $item_index) {
+            if(in_array($item_index, $applicable_item_indexes)) {
+              $prices[$item_index] =  uc_multi_coupon_calculate_discounted_price($prices[$item_index], $coupon);
+            }
+          }
+        }
+        else {
+          // Otherwise include all the prices in the applicable totals.
+          foreach($prices as $item_index => $price) {
+            $prices[$item_index] =  uc_multi_coupon_calculate_discounted_price($price, $coupon);
+          }
+        }
+      }
+    }
+    else {
+      foreach($prices as $item_index => $price) {
+        $prices[$item_index] =  uc_multi_coupon_calculate_discounted_price($price, $coupon);
+      }
+    }
+    $coupon->amount = $coupon_start_total - array_sum($prices);
+    $coupons[$coupon_index] = $coupon;
+  }
+  $result->amount = $cart_total - array_sum($prices);
+  $titles = $codes = array();
+  foreach($coupons as $coupon) {
+    $titles[] = t('Coupon: @code', array('@code' => $coupon->code));
+    $codes[] = $coupon->code;
+  }
+  $result->coupons = $coupons;
+  $result->valid = TRUE;
+  $result->code = $codes;
+  $result->title = implode(',', $titles);
+  return $result;
+}
+
+/*
+ * Helping function for calculating discounted price
+ */
+function uc_multi_coupon_calculate_discounted_price($price, $coupon) {
+  if ($coupon->type == 'percentage') {
+    $amount = round(($price - ($price * $coupon->value / 100)), variable_get('uc_currency_prec', 2));
+  }
+  else if ($coupon->type == 'price') {
+    $amount = $price - $coupon->value;
+  }
+  if($amount < 0) return 0;
+  return $amount;
+}
+

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<soap:Body>
+  <GetRatingEngineQuote xmlns="http://tempuri.org/">
+    <request>
+      <CustomerId>0</CustomerId> <!-- Identifier for customer provided by Freightquote -->
+      <QuoteType>B2B</QuoteType> <!-- B2B / eBay /Freightview -->
+      <ServiceType>LTL</ServiceType> <!--  LTL / Truckload / Groupage / Haulage / Al  -->
+      <QuoteShipment>
+        <IsBlind>false</IsBlind>
+        <PickupDate>2010-09-13T00:00:00</PickupDate>
+        <SortAndSegregate>false</SortAndSegregate>
+        <ShipmentLocations>
+          <Location>
+            <LocationType>Origin</LocationType>
+            <RequiresArrivalNotification>false</RequiresArrivalNotification>
+            <HasDeliveryAppointment>false</HasDeliveryAppointment>
+            <IsLimitedAccess>false</IsLimitedAccess>
+            <HasLoadingDock>false</HasLoadingDock>
+            <IsConstructionSite>false</IsConstructionSite>
+            <RequiresInsideDelivery>false</RequiresInsideDelivery>
+            <IsTradeShow>false</IsTradeShow>
+            <IsResidential>false</IsResidential>
+            <RequiresLiftgate>false</RequiresLiftgate>
+            <LocationAddress>
+              <PostalCode>30303</PostalCode>
+              <CountryCode>US</CountryCode>
+            </LocationAddress>
+            <AdditionalServices />
+          </Location>
+          <Location>
+            <LocationType>Destination</LocationType>
+            <RequiresArrivalNotification>false</RequiresArrivalNotification>
+            <HasDeliveryAppointment>false</HasDeliveryAppointment>
+            <IsLimitedAccess>false</IsLimitedAccess>
+            <HasLoadingDock>false</HasLoadingDock>
+            <IsConstructionSite>false</IsConstructionSite>
+            <RequiresInsideDelivery>false</RequiresInsideDelivery>
+            <IsTradeShow>false</IsTradeShow>
+            <IsResidential>false</IsResidential>
+            <RequiresLiftgate>false</RequiresLiftgate>
+            <LocationAddress>
+              <PostalCode>60606</PostalCode>
+              <CountryCode>US</CountryCode>
+            </LocationAddress>
+            <AdditionalServices />
+          </Location>
+        </ShipmentLocations>
+        <ShipmentProducts>
+          <Product>
+            <Class>55</Class>
+            <Weight>1200</Weight>
+            <Length>0</Length>
+            <Width>0</Width>
+            <Height>0</Height>
+            <ProductDescription>Books</ProductDescription>
+            <PackageType>Pallets_48x48</PackageType>
+            <IsStackable>false</IsStackable>
+            <DeclaredValue>0</DeclaredValue>
+            <CommodityType>GeneralMerchandise</CommodityType>
+            <ContentType>NewCommercialGoods</ContentType>
+            <IsHazardousMaterial>false</IsHazardousMaterial>
+            <PieceCount>5</PieceCount>
+            <ItemNumber>0</ItemNumber>
+          </Product>
+        </ShipmentProducts>
+        <ShipmentContacts />
+      </QuoteShipment>
+    </request>
+    <user>
+      <Name>xmltest@freightquote.com</Name>
+      <Password>xml</Password>
+    </user>
+  </GetRatingEngineQuote>
+</soap:Body>
+</soap:Envelope>

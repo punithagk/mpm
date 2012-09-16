@@ -1,0 +1,9 @@
+<p><?php print $intro_text; ?></p>
+
+<div id="left" class="my-form-wrapper" style="background-color:#EEEEEE; width=200px;">
+	<h3>Returning Customers:</h3>
+	Please sign in before continuing for access to convenient features
+	and quick checkout. <br>
+	<br>
+  <?php print $rendered; ?>
+</div>

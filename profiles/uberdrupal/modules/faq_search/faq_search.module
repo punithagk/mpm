@@ -1,0 +1,63 @@
+<?php
+// $Id: faq_search.module,v 1.1 2009/08/31 18:12:21 johnpv Exp $
+/**
+  * @file
+  * For use with the FAQ module, creates a block that searches the FAQ nodes as you type and returns the relevant results.
+  */
+
+/**
+  * Implementation of hook_menu().
+  */
+
+function faq_search_menu() {
+  $items['faq_find'] = array(
+    'title' => 'Find FAQs',
+    'page callback' => 'faq_search_find',
+    'access arguments' => array('access content'),
+    'file' => 'faq_search.find.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+  * Implementation of hook_block().
+  */
+
+function faq_search_block($op='list', $delta=0, $edit=array()) {
+  switch ($op) {
+    case 'list':
+      $blocks[0]['info'] = t('FAQ Search');
+      return $blocks;
+    case 'view':
+      $blocks['content'] = faq_search_block_output();
+      return $blocks;
+  }
+}
+
+/**
+  * Builds the form, consists of only a text box.
+  */
+
+function faq_search_form($form_state) {
+  $form['keyword'] = array(
+    '#type' => 'textfield',
+    '#title' => t("Search FAQ's"),
+    '#size' => 20
+  );
+  return $form;
+}
+
+/**
+  * Create the HTML output for the FAQ Search block.
+  */
+
+function faq_search_block_output() {
+  drupal_add_css(drupal_get_path('module', 'faq_search') .'/css/faq_search.css', 'module');
+  drupal_add_js(drupal_get_path('module', 'faq_search') .'/js/faq_search.js', 'module');
+  $output = drupal_get_form('faq_search_form');
+  $output .= "<div id='faq-results'></div>";
+  
+  return $output;
+}

@@ -1,0 +1,92 @@
+<?php
+
+/**
+* Implementation of hook_install().
+*
+* 
+*/
+function user_files_install() {
+  //ensure runs last 
+  db_query("UPDATE {system} SET weight = %d WHERE name = 'user_files'", 1);
+  //check folder
+  $dir = file_create_path('user-files');
+  if (!file_check_directory($dir, FILE_CREATE_DIRECTORY) && !mkdir($dir, 0775, TRUE)) {
+    watchdog('user_files', 'Failed to create writable user files directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
+    drupal_set_message(t('Could not create writable user files directory: !dir', array('!dir' => $dir)), 'error');
+    return FALSE;
+  } 
+  drupal_set_message('Created user files directory');
+  $thumbdir = file_create_path('user-files/thumbs');
+  if (!file_check_directory($thumbdir, FILE_CREATE_DIRECTORY) && !mkdir($thumbdir, 0775, TRUE)) {
+    watchdog('user_files', 'Failed to create writable user files directory: %dir', array('%dir' => $thumbdir), WATCHDOG_ERROR);
+    drupal_set_message(t('Could not create writable user files directory: !dir', array('!dir' => $thumbdir)), 'error');
+    return FALSE;
+  } 
+  drupal_set_message('Created user files thumb directory');
+  $cachedir = file_create_path('user-files/cache');
+  if (!file_check_directory($cachedir, FILE_CREATE_DIRECTORY) && !mkdir($cachedir, 0775, TRUE)) {
+    watchdog('user_files', 'Failed to create writable user files cache directory: %dir', array('%dir' => $cachedir), WATCHDOG_ERROR);
+    drupal_set_message(t('Could not create writable user files cache directory: !dir', array('!dir' => $cachedir)), 'error');
+    return FALSE;
+  } 
+  drupal_set_message('Created user files cache directory');
+  $htaccess_lines = "SetHandler This_is_a_Drupal_security_line_do_not_remove\nDeny from all";
+  if (($fp = fopen("$dir/.htaccess", 'w')) && fputs($fp, $htaccess_lines)) {
+    fclose($fp);
+    chmod($dir .'/.htaccess', 0664);
+    drupal_set_message(t('Created .htaccess file in user files directory: !dir', array('!dir' => $dir)));
+  }
+  else {
+    watchdog('user_files', 'Failed to create .htaccess file in user files directory: %dir', array('%dir' => $dir), WATCHDOG_ERROR);
+    drupal_set_message(t('Could not create .htaccess file in user files directory: !dir', array('!dir' => $dir)),'error');
+    return FALSE;
+  }
+  drupal_install_schema('user_files');
+}
+
+
+/**
+ * Implementation of hook_schema
+*/
+function user_files_schema() {
+  $schema = array();
+  $schema['user_files_anon'] = array(
+    'description' => 'Store session id to fid association',
+    'fields'      => array(
+      'fid' => array(
+        'description'   => 'File id',
+        'type'          => 'int',
+        'size'          => 'medium',
+        'not null'      => TRUE
+      ),
+      'sid' => array(
+        'description'   => 'Session id',
+        'type'          => 'varchar',
+        'size'          => 'normal',
+        'not null'      => TRUE,
+        'length'        => 255
+      )
+    ),
+    'primary key' => array('fid'),    
+  );
+  $schema['user_files_image_info'] = array(
+    'description' => 'Store image details including color channels',
+    'fields'      => array(
+      'fid' => array(
+        'description'   => 'File id',
+        'type'          => 'int',
+        'size'          => 'medium',
+        'not null'      => TRUE
+      ),
+      'details' => array(
+        'description'   => 'details',
+        'type'          => 'text',
+        'size'          => 'normal',
+        'not null'      => TRUE
+      )
+    ),
+    'primary key' => array('fid'),    
+  );
+  return $schema;
+}
+

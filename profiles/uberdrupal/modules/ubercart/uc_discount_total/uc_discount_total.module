@@ -1,0 +1,347 @@
+<?php
+// $Id: uc_discount_total.module,v 1.2.4.1 2009/12/24 13:58:33 glu2006 Exp $
+/**
+ * @file
+ * Discounts based on sum of all user's successfully completed purchases. Discount grows depending on orders total amount. */
+
+function uc_discount_total_nodeapi(&$node, $op) {
+  if (variable_get('discount_'. $node->type, 0)) {
+    switch ($op) {
+      case 'load':
+        if (uc_product_is_product($node->type)) {
+          $node->new_price = uc_discount_total_calc($node->sell_price);
+        }
+      break;
+      case 'view':
+        if (variable_get('view_discount_total', 0)) {
+          $node->content['sell_price_new'] = array(
+            '#value' => theme('uc_discount_total_new_price', $node->new_price),
+            '#access' => 1,
+            '#weight' => 4,
+          );
+        }
+      break;
+    }
+  }
+}
+
+function uc_discount_total_form_alter(&$form, $form_state) {
+  $type = $form['#node_type'];
+  if (!uc_product_is_product($type->type)) {
+    return;
+  }
+  $form['uc_product']['discount'] = array(
+    '#type' => 'radios',
+    '#title' => t('Set discount'),
+    '#default_value' => variable_get('discount_'. $form['#node_type']->type, 0),
+    '#options' => array(t('Disabled'), t('Enabled')),
+  );
+}
+
+function uc_discount_total_theme() {
+  return array(
+    'uc_discount_total_new_price' => array(
+      'arguments' => array('price' => 0),
+    ),
+  );
+}
+
+function theme_uc_discount_total_new_price($price = 0) {
+  if ($price) {
+    $output = '<div class="discount-prise"><p>'. t('Discount price: ') . uc_currency_format($price) .'</p></div>'; 
+  }
+  return $output;
+}
+
+function uc_discount_total_menu() {
+  global $user;
+  $items = array();
+  
+  $items['admin/store/settings/discount-total'] = array(
+    'title' => 'Total Discount Settings',
+    'page callback' => 'uc_discount_total_page',
+    'access arguments' => array('administer discount'),
+  );
+  $items['admin/store/settings/discount-total/range']=array(
+    'title' => 'Order Total Discount',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  $items['admin/store/settings/discount-total/delete/%']=array(
+    'title' => 'Delete discount',
+    'page callback' => 'uc_discount_total_delete',
+    'page arguments' => array(5),
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('administer discount'),
+  );
+  $items['admin/store/settings/discount-total/edit/%']=array(
+    'title' => 'Edit discount',
+    'page callback' => 'uc_discount_total_edit',
+    'page arguments' => array(5),
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('administer discount'),
+  );
+  $items['admin/store/settings/discount-total/global-settings']=array(
+    'title' => 'Global Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_discount_total_settings_form'),
+    'type' => MENU_LOCAL_TASK,
+    'access arguments' => array('administer discount'),
+  );
+  return $items;
+}
+
+function uc_discount_total_perm() {
+  return array('administer discount');
+}
+
+function uc_discount_total_page() {
+  $output = uc_discount_total_table($collapsed);
+  $output .= drupal_get_form('uc_discount_total_add_discount_form');
+  return $output;
+}
+
+function uc_discount_total_table() {
+  $header[] = t('Min summ');
+  $header[] = t('Max summ');
+  $header[] = t('Rate (%)');
+  $header[] = t('Operation');
+  $result = db_query("SELECT * FROM {uc_discount_total} ORDER BY total_rate");
+  while ($data = db_fetch_object($result)) {
+    $row[] = array(
+      array(
+        'data' => uc_currency_format($data->total_min)),
+      array(
+        'data' => uc_currency_format($data->total_max)),
+      array(
+        'data' => $data->total_rate .'%'),
+      array(
+        'data' => l(t('delete'), 'admin/store/settings/discount-total/delete/'. $data->id) .' | '. 
+        l(t('edit'), 'admin/store/settings/discount-total/edit/'. $data->id))
+    );
+  }
+  $output = theme('table', $header, $row);
+  return $output;
+}
+
+function uc_discount_total_add_discount_form($form_state, $collapsed = TRUE, $discount = NULL) {
+  if ($discount['id']) {
+    $title = t('Edit Rate');
+    $id = $discount['id'];
+    $submit_val = t('Edit Rate');}
+  else {
+    $title = t('Add Rate');
+    $submit_val = t('Add Rate');
+  }
+  $form['add_discount'] = array(
+    '#type' => 'fieldset',
+    '#title' => $title,
+    '#prefix' => '<div class="discount-form">',
+    '#suffix' => '</div>',
+    '#collapsible' => TRUE,
+    '#collapsed' => $collapsed,
+  );
+  $form['add_discount']['id'] = array(
+    '#type' => 'hidden',
+    '#value' => $id,
+  );
+  $form['add_discount']['min_summ'] = array(
+    '#title' => t('Min summ'),
+    '#description' => t('Enter the minimum sum for discount charge'),
+    '#type' => 'textfield',
+    '#default_value' => $discount['total_min'],
+    '#required' => TRUE,
+  );
+  $form['add_discount']['max_summ'] = array(
+    '#title' => t('Max summ'),
+    '#description' => t('Enter the maximum sum for discount charge'),
+    '#default_value' => $discount['total_max'],
+    '#type' => 'textfield',
+    '#required' => TRUE,
+  );
+  $form['add_discount']['rate'] =array(
+    '#title' => t('Rate (%)'),
+    '#description' => t('To specify value without a symbol of %'),
+    '#default_value' => $discount['total_rate'],
+    '#type' => 'textfield',
+    '#required' => TRUE,
+  );
+  $form['add_discount']['add'] =array(
+    '#value' => $submit_val,
+    '#type' => 'submit'
+  );
+  $form['#validate'] = array(
+    'number_validate',
+    'range_validate',
+  );
+  return $form;
+}
+
+function number_validate($form, &$form_state) {
+  //TODO: Make expression simlper.
+  $float_reg = '^\d+([.,]\d+){0,1}$';
+  $rate_reg = '^\d+([.,]\d+){0,1}\%{0,1}$';
+  if (!preg_match("/$float_reg/", $form_state['values']['min_summ'])) {
+    form_set_error('min_summ', t('Only positive decimal values are allowed in Min Summ field!'));
+  }
+  if (!preg_match("/$float_reg/", $form_state['values']['max_summ'])) {
+    form_set_error('max_summ', t('Only positive decimal values are allowed in Max Summ field!'));
+  }
+  if (!preg_match("/$rate_reg/", $form_state['values']['rate'])) {
+    form_set_error('rate', t('Only positive decimal values are allowed in Rate field!'));
+  }
+  if ($form_values['rate'] >= 100) {
+    form_set_error('rate', t('Rate should be less or equal to 100%!'));
+  }
+}
+ 
+function range_validate($form, &$form_state) {
+  $trans = array(',' => '.');
+  $form_state['values']['min_summ'] = strtr($form_state['values']['min_summ'], $trans);
+  $form_state['values']['max_summ'] = strtr($form_state['values']['max_summ'], $trans);
+  $form_state['values']['rate'] = strtr($form_state['values']['rate'], $trans);
+  if ($form_state['values']['min_summ'] >= $form_state['values']['max_summ']) {
+    form_set_error('min_summ', t('Min Summ must not be greater than Max Summ!'));
+  }
+  $result = db_query("SELECT total_min, total_max FROM {uc_discount_total} WHERE id <> %d", $form_state['values']['id']);
+  while ($value = db_fetch_array($result)) {
+    if ($value['total_min'] <= $form_state['values']['min_summ'] && $value['total_max'] >= $form_state['values']['min_summ']) {
+      form_set_error('min_summ', t('This range intersects with already existing one. Please enter another Min Summ value.'));
+    } 
+    if ($value['total_min'] <= $form_state['values']['max_summ'] && $value['total_max'] >= $form_state['values']['max_summ']) {
+      form_set_error('max_summ', t('This range intersects with already existing one. Please enter another Max Summ value.'));
+    }
+  }
+}
+
+function uc_discount_total_add_discount_form_submit($form, &$form_state) {
+  if ($form_state['values']['id']) {
+    db_query("UPDATE {uc_discount_total} SET total_min = %f, total_max = %f, total_rate = %f
+      WHERE id = %d", $form_state['values']['min_summ'], $form_state['values']['max_summ'], $form_state['values']['rate'], $form_state['values']['id']);
+    drupal_set_message(t('Discount has been successfully updated.'));
+    drupal_goto('admin/store/settings/discount-total');}
+  else {
+    db_query("INSERT INTO {uc_discount_total} (total_min, 
+      total_max, total_rate) VALUES (%f,%f,%f)", $form_state['values']['min_summ'], $form_state['values']['max_summ'], $form_state['values']['rate']);
+    drupal_set_message(t('Discount has been successfully added.'));
+  }
+}
+
+function uc_discount_total_delete($arg) {
+  db_query("DELETE FROM {uc_discount_total} WHERE id = %d", $arg);
+  drupal_goto('admin/store/settings/discount-total');
+}
+
+function uc_discount_total_edit($arg) {
+  $discount = db_fetch_array(db_query("SELECT * FROM {uc_discount_total} WHERE id = %d", $arg));
+  $output .= drupal_get_form('uc_discount_total_add_discount_form', FALSE, $discount);
+  return $output;
+}
+
+function uc_discount_total_personal_rate($summ) {
+  $rate = db_result(db_query("SELECT total_rate FROM {uc_discount_total} 
+    WHERE total_min <= %f AND total_max >= %f", $summ, $summ));
+  return $rate;
+}
+
+function uc_discount_total_cart_item($op, &$item) {
+  switch ($op) {
+    case 'load':
+      $type = db_result(db_query("SELECT type FROM {node} WHERE nid = %d", $item->nid));
+      if (variable_get('discount_'. $type, 0)) {
+        $item->price = uc_discount_total_calc($item->price);
+      }
+    break;
+  }
+}
+
+function uc_discount_total_rate() {
+  global $user;
+  static $rate;
+  if (!$rate) {
+    $total_sum = db_result(db_query("SELECT COALESCE(SUM(price * qty), 0) AS total FROM {uc_order_products} ucpr LEFT JOIN {uc_orders} uc ON ucpr.order_id = uc.order_id  LEFT JOIN {uc_order_statuses} ucs ON uc.order_status = ucs.order_status_id WHERE uid = %d AND state NOT IN('%s', '%s')", $user->uid, 'canceled', 'in_checkout'));
+    $rate = uc_discount_total_personal_rate($total_sum);
+  }
+  return $rate;
+}
+
+function uc_discount_total_checkout_pane() {
+  $panes[] = array(
+    'id' => 'discount',
+    'callback' => 'uc_discount_total_display',
+    'title' => t('Discount information'),
+    'weight' => 2,
+  );
+  return $panes;
+}
+
+function uc_discount_total_display($op, &$arg1, $arg2) {
+  global $user;
+  switch ($op) {
+    case 'view':
+      break;
+    case 'process':
+      return TRUE;
+    case 'review':
+      if ($user->uid) {
+        $output = '<div class="discount">'. t('Your discount is !rate%.', array('!rate' => uc_discount_total_rate())) .'</div>';
+        $output .= '<div class="message">'. t('You are saving !save', array('!save' => uc_currency_format(uc_discount_total_all_economy($arg1->products)))) .'</div>';}
+      elseif (variable_get('guest_discount', '0') != 0) {
+        $output = '<div class="discount">'. t('Since you are not a registered user, your discount is only !rate%.', array('!rate' => variable_get('guest_discount', '0'))) .'</div>';
+        $output .= '<div class="message">'. t('You are saving !save', array('!save' => uc_currency_format(uc_discount_total_all_economy($arg1->products)))) .'</div>';}
+      else {
+        $output = '<div class="discount">'. t('Since you are not a registered user you have no discount.') .'</div>';
+      }
+      $review[] = array('title' => t('Discount'), 'data' => $output);
+      return $review;
+  }
+}
+
+function uc_discount_total_calc($sell_price) {
+  global $user;
+  if ($user->uid) {
+    return round($sell_price / 100 * (100 - uc_discount_total_rate()), 2);}
+  else {
+    return round($sell_price / 100 * (100 - variable_get('guest_discount', '0')), 2);
+  }
+}
+
+function uc_discount_total_economy_calc($total) {
+  global $user;
+  if ($user->uid && uc_discount_total_rate()) {
+    return round($total * 100 / (100 - uc_discount_total_rate()) - $total, 2);}
+  else {
+    return round($total * 100 / (100 - variable_get('guest_discount', '0')) - $total, 2);
+  }
+}
+
+function uc_discount_total_all_economy($items = array()) {
+  $economy = 0;
+  foreach ($items as $item) {
+    $old_price = round(db_result(db_query("SELECT sell_price FROM {uc_products} WHERE nid = %d", $item->nid)), 2);
+    if ($old_price > $item->price) {
+      $economy += uc_discount_total_economy_calc($item->price) * $item->qty;
+    }
+  }
+  return $economy;
+}
+
+function uc_discount_total_settings_form() {
+  $form['id'] = array(
+    '#type' => 'hidden',
+    '#value' => 'discount_settings_form',
+  );
+  $form['guest_discount'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Guest Rate(%)'),
+    '#default_value' => variable_get('guest_discount', '0'),
+    '#description' => t('The guest discount Rate (%) is applied for all anonymous users. Set rate to 0 to disable discount.')
+  );
+  $form['view_discount_total'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Select this'),
+    '#default_value' => variable_get('view_discount_total', 0),
+    '#description' => t('If this is checked, the price with discount will be populated on the product page and teaser.'),
+  );
+  return system_settings_form($form);
+}

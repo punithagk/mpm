@@ -1,0 +1,14 @@
+name = User files repository
+package = Custom Website Express
+description = Provides anonymous or authenticated users with a private repository of files which they can upload/manage
+core = 6.x
+dependencies[] = imagecache
+dependencies[] = upload
+dependencies[] = imageapi
+
+; Information added by drupal.org packaging script on 2011-03-01
+version = "6.x-1.0-beta6"
+core = "6.x"
+project = "user_files"
+datestamp = "1299019869"
+

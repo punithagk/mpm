@@ -1,0 +1,240 @@
+<?php
+
+/*******************************************************************************
+ * Hook Functions (Ubercart)
+ ******************************************************************************/
+
+function uc_discounts_taxonomy_discounts_condition() {
+  $conditions[] = array(
+    'property' => 'taxonomy',
+    'description' => t('Taxonomy'),
+    'compare_type' => 'text',
+    'check_callback' => 'uc_discounts_taxonomy_check',
+    //'count_callback' => 'uc_discounts_taxonomy_count',
+    'item_name_callback' => 'uc_discounts_taxonomy_item_name',
+    'item_field_callback' => 'uc_discounts_taxonomy_item_field',
+    //'value_field_callback' => 'uc_discounts_taxonomy_value_field',
+  );
+  return $conditions;
+}
+
+function uc_discounts_taxonomy_discounts_action() {
+  $actions[] = array(
+    'property' => 'product_type_from_order',
+    'description' => t('Discount product type price from order'),
+    'has_qty_field' => FALSE,
+   // 'item_field_callback' => 'uc_discounts_taxonomy_item_field', //recycle
+   // 'item_name_callback' => 'uc_discounts_taxonomy_item_name', //recycle
+    'apply_callback' => 'uc_discounts_taxonomy_apply',
+  );
+  return $actions;
+}
+
+/*******************************************************************************
+ * Callback Functions, Forms, and Tables
+ ******************************************************************************/
+
+function uc_discounts_taxonomy_check($condition, $total_price, $cart) {
+  $product_count = 0;
+  $retorno = FALSE;
+  $equals = FALSE;
+  if ($condition->op == '=') {
+    $equals = TRUE;
+  }
+  foreach ($cart as $product) {
+    $terms = taxonomy_node_get_terms($product->nid);
+    foreach ($terms as $term) {
+      if ($equals) {
+        if ($term->name == $condition->item_id) {
+          $retorno = TRUE;
+        }
+      }
+      else {
+        if ($term->name != $condition->item_id) {
+          $retorno = TRUE;
+        }
+      }
+    }
+  }
+
+  return $retorno;
+}
+/*
+function uc_discounts_taxonomy_count($condition, $cart) {
+  $count = 0;
+  foreach ($cart as $product) {
+    $terms = taxonomy_node_get_terms($product->nid);
+    foreach ($terms as $term) {
+      if ($term->name == $condition->item_id) {
+        $count += $product->qty;
+      }
+    }
+  }
+  return $count;
+}
+*/
+/**
+ *
+ */
+function uc_discounts_taxonomy_item_name($item_id) {
+  /*$result = db_query('SELECT name FROM {term_data} WHERE name=%d', $item_id);
+  $item_name = check_plain(db_result($result));*/
+  return $item_id;
+}
+
+/**
+ * Generate the condition item field
+ */
+function uc_discounts_taxonomy_item_field() {
+  $field = array(
+    '#type' => 'textfield',
+    '#title' => t('Term'),
+    '#autocomplete_path' => 'discounts/taxonomy/autocomplete',
+  );
+
+  return $field;
+}
+
+function uc_discounts_taxonomy_menu() {
+  $items['discounts/taxonomy/autocomplete'] = array(
+    'title' => t('Autocomplete Discounts'),
+    'page callback' => 'uc_discounts_taxonomy_autocomplete',
+    'access callback' => 'user_access',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Helper function for autocompletion
+ */
+function uc_discounts_taxonomy_autocomplete($string) {
+
+    $result = db_query_range("SELECT t.tid, t.name FROM {term_data} t WHERE LOWER(t.name) LIKE LOWER('%%%s%%')",$string, 0, 10);
+
+    $matches = array();
+    while ($tag = db_fetch_object($result)) {
+      $matches[$tag->name] = check_plain($tag->name);
+    }
+    print drupal_to_js($matches);
+    exit();
+}
+
+/**
+ * Generate the condition value field
+ */
+function uc_discounts_taxonomy_value_field() {
+  $field = array(
+    '#type' => 'textfield',
+    '#title' => t('Quantity'),
+    '#maxlength' => 12,
+    '#size' => 6,
+    '#required' => TRUE,
+  );
+  return $field;
+}
+
+function uc_discounts_taxonomy_apply($op, $action, $total_price, &$cart) {
+
+  // get conditions to make sure products can't be used more than once for
+  // a discount
+
+  //drupal_set_message("uc_discounts_taxonomy_apply: $op $action $total_price ". print_r($cart));
+  $sql = "SELECT * FROM {uc_discounts_conditions} WHERE discount_id=%d ";
+// removing the following lines per kiruva [http://www.ubercart.org/contrib/143#comment-8814]
+//  $sql .= "AND property='product' ";
+//  $sql .= "AND item_id='%s' ";
+  $sql .= "ORDER BY condition_group, weight";
+  $result = db_query($sql, $action->discount_id, $action->item_id);
+
+//ob_start(); print_r($action);
+//drupal_set_message(" hit uc_discounts_taxonomy_apply: ");
+//drupal_set_message(ob_get_contents()); ob_end_clean();
+//drupal_set_message(t("[$sql]",array('%d'=> $action->discount_id,'%s' => $action->item_id)));
+
+  $condition_list = array();
+  while ($row = db_fetch_object($result)) {
+    $condition_list[$row->id] = $row;
+  }
+
+  if (empty($condition_list)) {
+    return 0;
+  }
+
+  $discount = 0;
+  $discount_amount = 0;
+
+  foreach ($condition_list as $condition) {
+
+    if ($condition->property == 'taxonomy') {
+      $equals = FALSE;
+      if ($condition->op == '=') {
+        $equals = TRUE;
+      }
+
+      foreach ($cart as $index => $product) {
+        $fits_equal = FALSE;
+        if ($condition->discount_id == $action->discount_id) {
+          $terms = taxonomy_node_get_terms($product->nid);
+          $qty   = $product->qty;
+
+          // for each term, if the condition is = ($equals=TRUE), if there is one term which
+          // matches, it returns TRUE
+          // else, if it must be different, all term must not match, so it returns FALSE
+          if ($equals) {
+            $fits_equal = FALSE;
+            while ($term = current($terms) AND !$fits_equal) {
+              $fits_equal = FALSE;
+              if ($term->name == $condition->item_id) {
+                $fits_equal = TRUE;
+              }
+              next($terms);
+            }
+          }
+          else {
+            $fits_equal = TRUE;
+            while ($term = current($terms) AND $fits_equal) {
+              $fits_equal = TRUE;
+              if ($term->name == $condition->item_id) {
+                $fits_equal = FALSE;
+              }
+              next($terms);
+            }
+          }
+
+          if ($fits_equal) {
+              drupal_set_message('producto- '.dprint_r($product->title,TRUE));
+            if (substr($action->amount, -1) == '%') {
+              $discount_percent = substr($action->amount, 0, -1) / 100;
+              if ($discount_percent > 1) {
+                // invalid percentage
+                $discount_percent = 0;
+              }
+
+              if ($action->qty != 0) {
+                $qty = $action->qty;
+              }
+              $discount += $product->price * ($discount_percent * $qty);
+            }
+            else {
+              if (substr($action->amount, 0, 1) == '$' OR substr($action->amount, 0, 1) == '€') {
+                $discount_amount = substr($action->amount, 1);
+              }
+              else {
+                $discount_amount = $action->amount;
+              }
+              if ($discount_amount > $product->price) {
+                // do not allow discounting greater than the product price
+                $discount_amount = $product->price;
+              }
+              $discount += $discount_amount * $qty;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return $discount;
+}

@@ -1,0 +1,87 @@
+<?php
+
+/*******************************************************************************
+ * Hook Functions (Ubercart)
+ ******************************************************************************/
+
+function uc_discounts_profile_discounts_condition() {
+  $conditions[] = array(
+    'property' => 'profile',
+    'description' => t('Profile'),
+    'compare_type' => 'text',
+    'check_callback' => 'uc_discounts_profile_check',
+    'item_field_callback' => 'uc_discounts_profile_item_field',
+    'item_name_callback' => 'uc_discounts_profile_item_name',
+    'value_field_callback' => 'uc_discounts_profile_value_field',
+  );
+
+  return $conditions;
+}
+
+/*******************************************************************************
+ * Callback Functions, Forms, and Tables
+ ******************************************************************************/
+
+function uc_discounts_profile_check($condition, $total_price, $cart) {
+  global $user;
+  $account = user_load($user->uid);
+
+  return uc_discounts_compare('text', $account->{$condition->item_id}, $condition->op, $condition->value);
+}
+
+function uc_discounts_profile_item_field() {
+  $options = get_profile_fields();
+  if (empty($options)) {
+    $field = array(
+      '#type' => 'item',
+      '#title' => t('Profile'),
+      '#description' => t('No profile fields available'),
+    );
+  }
+  else {
+    $field = array(
+      '#type' => 'select',
+      '#title' => t('Profile field'),
+      '#options' => $options,
+    );
+  }
+
+  return $field;
+}
+
+/**
+ * Generate the condition value field
+ */
+function uc_discounts_profile_value_field() {
+  $field = array(
+    '#type' => 'textfield',
+    '#title' => t('Value'),
+    '#description' => t('What is the value the profile field should have to make the condition true ?'),
+    '#maxlength' => 32,
+    '#size' => 32,
+    '#required' => TRUE,
+  );
+  return $field;
+}
+
+function uc_discounts_profile_item_name($item_id) {
+  $fields = get_profile_fields();
+  if (isset($fields[$item_id])) {
+    return $fields[$item_id];
+  }
+
+  return '';
+}
+
+/**
+ * Get profile field list	 
+ **/
+function get_profile_fields() {
+  $result = db_query('SELECT * FROM {profile_fields}');
+  $fields = array();
+  while($profile_field = db_fetch_object($result)) {
+    $fields[$profile_field->name] = $profile_field->title.' ('.$profile_field->name.')';
+  }
+  return $fields;
+}
+ 

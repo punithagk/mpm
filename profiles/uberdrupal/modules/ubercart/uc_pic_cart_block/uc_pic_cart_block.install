@@ -1,0 +1,24 @@
+<?php
+// $Id: uc_pic_cart_block.install,v 1.2 2009/04/11 11:37:41 vetkhy Exp $
+
+/**
+ * @file
+ * Uninstall the module, actually.
+ */
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function uc_pic_cart_block_uninstall() {
+  variable_del('uc_pic_cart_block_imagecache_preset');
+  variable_del('uc_pic_cart_block_hide_if_empty');
+  variable_del('uc_pic_cart_block_hide_if_cached');
+  variable_del('uc_pic_cart_block_show_cart_icon');
+  variable_del('uc_pic_cart_block_show_sort_header');
+  variable_del('uc_pic_cart_block_increase_first');
+  variable_del('uc_pic_cart_block_use_currency');
+  variable_del('uc_pic_cart_block_scroll_count');
+  variable_del('uc_pic_cart_block_show_descriptions');
+  variable_del('uc_pic_cart_block_summary_items');
+  variable_del('uc_pic_cart_block_orientation');
+}

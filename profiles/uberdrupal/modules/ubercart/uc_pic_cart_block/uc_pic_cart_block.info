@@ -1,0 +1,15 @@
+; $Id: uc_pic_cart_block.info,v 1.2 2009/04/11 11:37:41 vetkhy Exp $
+name = Pictured cart block
+description = Cart block with product image and buttons to manipulate items.
+core = 6.x
+dependencies[] = uc_cart
+dependencies[] = uc_product
+dependencies[] = imagecache
+dependencies[] = imagefield
+package = "Ubercart - extra"
+; Information added by drupal.org packaging script on 2009-05-12
+version = "6.x-1.0-beta3"
+core = "6.x"
+project = "uc_pic_cart_block"
+datestamp = "1242152513"
+

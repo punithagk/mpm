@@ -1,0 +1,15 @@
+; $Id: uc_discount_total.info,v 1.2.4.1 2009/12/24 13:58:33 glu2006 Exp $
+name = Order Total Discount
+description = Discounts based on sum of all user's successfully completed purchases. Discount grows depending on orders total amount. 
+dependencies[] = uc_cart
+dependencies[] = uc_order
+dependencies[] = uc_product
+package = "Ubercart - core (optional)"
+core = 6.x
+php = 5.0
+; Information added by drupal.org packaging script on 2009-12-24
+version = "6.x-1.0"
+core = "6.x"
+project = "uc_discount_total"
+datestamp = "1261663858"
+

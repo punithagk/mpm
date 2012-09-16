@@ -1,0 +1,175 @@
+<?php
+
+/*******************************************************************************
+ * Hook Functions (Ubercart)
+ ******************************************************************************/
+
+function uc_discounts_multi_product_discounts_condition() {
+  $conditions[] = array(
+    'property' => 'product_multi',
+    'description' => t('Multi Product'),
+    'compare_type' => 'integer',
+    'check_callback' => 'uc_discounts_multi_product_check',
+    'product_class_callback' => 'uc_discounts_multi_product_class_name',
+    'item_name_callback' => 'uc_discounts_multi_product_item_name',
+    'item_field_callback' => 'uc_discounts_multi_product_item_field',
+    'value_field_callback' => 'uc_discounts_multi_product_value_field',
+  );
+
+  return $conditions;
+}
+
+function uc_discounts_multi_product_discounts_action() {
+  $actions[] = array(
+    'property' => 'product_multi_items',
+    'description' => t('Discount multiple products from order'),
+    'has_qty_field' => TRUE,
+    'item_field_callback' => 'uc_discounts_multi_product_item_field', // recycle
+    'product_class_callback' => 'uc_discounts_multi_product_class_name', // recycle
+    'apply_callback' => 'uc_discounts_multi_product_apply',
+  );
+
+  return $actions;
+}
+
+/*******************************************************************************
+ * Callback Functions (Ubercart)
+ ******************************************************************************/
+
+function uc_discounts_multi_product_check($condition, $total_price, $cart) {
+
+  if (isset($condition->item)) {
+    $product_count = 0;
+    foreach ($cart as $product) {
+      if ( (in_array($product->type, $condition->item) || in_array($product->nid, $condition->item)) && (($condition->amount > 0) ? ($product->price == (float)$condition->amount) : TRUE) ) {
+        $product_count += $product->qty;
+      }
+    }
+  }
+
+  if ($product_count == 0) {
+    return FALSE;
+  }
+  elseif ($condition->op == '=' && $product_count == $condition->value) { return TRUE; }
+  elseif ($condition->op == '!=' && $product_count != $conditions->value) { return TRUE; }
+  elseif ($condition->op == '>=' && $product_count >= $condition->value) { return TRUE; }
+  elseif ($condition->op == '>' && $product_count > $condition->value) { return TRUE; }
+  elseif ($condition->op == '<=' && $product_count <= $condition->value) { return TRUE; }
+  elseif ($condition->op == '<' && $product_count < $condition->value) { return TRUE; }
+  else { return FALSE; }
+
+}
+
+function uc_discounts_multi_product_class_name($product_id) {
+  $result = db_query('SELECT type FROM {node} WHERE nid=%d', $product_id);
+  $product_name = check_plain(db_result($result));
+  return $product_name;
+}
+
+function uc_discounts_multi_product_item_name($class_id) {
+  $result = db_query("SELECT name FROM {uc_product_classes} WHERE pcid='%s'", $class_id);
+  $class_name = check_plain(db_result($result));
+  return $class_name;
+}
+
+function uc_discounts_multi_product_item_field() {
+  $options = array();
+  $result = db_query("SELECT pcid,name FROM {uc_product_classes} ORDER BY pcid");
+  while ($row = db_fetch_object($result)) {
+    $options[$row->pcid] = check_plain($row->name);
+  }
+
+  $products = array();
+  $result = db_query("SELECT n.nid,n.title FROM {uc_products} p LEFT JOIN {node} n ON n.nid=p.nid ORDER BY title");
+  while ($row = db_fetch_object($result)) {
+    $options[$row->nid] = check_plain($row->title);
+  }
+
+  $field = array(
+    '#type' => 'select',
+    '#multiple' => TRUE,
+    '#options' => $options,
+    '#title' => t('Multiple Product/Types'),
+//    '#size' => 'size="'. min(50, count($options)) .'"',
+  );
+
+  return $field;
+}
+
+function uc_discounts_multi_product_value_field() {
+  $field = array(
+    '#type' => 'textfield',
+    '#title' => t('Quantity'),
+    '#maxlength' => 12,
+    '#size' => 6,
+    '#required' => TRUE,
+  );
+  return $field;
+}
+
+function uc_discounts_multi_product_apply($op, $action, $total_price, &$cart) {
+
+  $action = uc_discounts_load_action($action->id);
+  $action->item = unserialize($action->item_id);
+
+  $sql = "SELECT id FROM {uc_discounts_conditions} WHERE discount_id=%d ";
+  $sql .= "AND property='product_multi' ";
+  $sql .= "ORDER BY condition_group, weight";
+  $result = db_query($sql, $action->discount_id);
+  $condition_list = array();
+  while ($row = db_fetch_object($result)) {
+    $c = uc_discounts_load_condition($row->id);
+    foreach ($action->item as $ai) {
+      if ($c->amount && in_array($ai, $c->item)) {
+        $action->condition_amount = $c->amount;
+      }
+    }
+  }
+
+  $product_price = 0;
+  foreach ($cart as $index => $product) {
+    if ( (in_array($product->nid, $action->item) || in_array($product->type, $action->item)) && (($action->condition_amount > 0) ? ($product->price == (float)$action->condition_amount) : TRUE) ) {
+      $product_count += $product->qty;
+      $product_total += ($product->qty * $product->price);
+      $product_found[$index] = $product->qty;
+    }
+  }
+
+  if (empty($product_count) || empty($product_found)) {
+    return 0;
+  }
+
+  if (substr($action->amount, -1) == '%') {
+    $discount_percent = substr($action->amount, 0, -1) / 100;
+    if ($discount_percent > 1) {
+      // invalid percentage
+      drupal_set_message(t('Cannot apply product discount greater than 100%'), 'error');
+      $discount_percent = 0;
+    }
+    $discount = $product_total * ($discount_percent * $action->qty);
+  }
+  else {
+    if (substr($action->amount, 0, 1) == '$') {
+      $discount_amount = substr($action->amount, 1);
+    }
+    else {
+      $discount_amount = $action->amount;
+    }
+
+    $discount = $discount_amount * $product_count;
+
+    if ($discount > $product_total) {
+      $discount = $product_total;
+    }
+    if ($discount > $total_price) {
+      $discount = $total_price;
+    }
+
+    foreach ($product_found as $cart_index => $product_count) {
+      $cart[$cart_index]->qty -= $product_count;
+    }
+  }
+
+  return $discount;
+}
+

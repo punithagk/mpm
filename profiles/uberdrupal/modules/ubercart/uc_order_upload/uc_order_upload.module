@@ -1,0 +1,202 @@
+<?php
+
+function uc_order_upload_menu() {
+  $items['order_upload/%/delete/%'] = array(
+    'title' => 'Delete file',
+    'description' => '',
+    'access arguments' => array('attach files to orders'),
+    'page callback' => 'uc_order_upload_delete_file',
+    'page arguments' => array(1, 3),
+    'type' => MENU_CALLBACK,
+    
+  );
+  
+  $items['order/%/download/%'] = array(
+    'page callback' => 'uc_order_upload_transfer',
+    'page arguments' => array(1, 3),
+    'access callback' => 'uc_order_upload_can_view_order',
+    'access arguments' => array(1),
+    'type' => MENU_CALLBACK
+  );
+  
+  return $items;
+}
+
+function uc_order_upload_transfer($order_id, $file_md5) {  
+  $order = uc_order_load($order_id);
+  foreach ($order->data['order_upload'] as $filepath => $title) {
+    if (md5($filepath) == $file_md5) {
+      $url = file_create_path($filepath);
+      if (!file_exists($filepath)) {
+        drupal_not_found();
+        exit();
+      }
+      
+      $headers = array(
+        'Content-type: ' . file_get_mimetype($filepath),
+        'Content-Disposition: attachment; filename="'. pathinfo($filepath, PATHINFO_FILENAME) .'"'
+      );
+      
+      file_transfer($url, $headers);
+      exit();  
+    }
+  } 
+}
+
+
+
+/**
+ * Access callback for user/%user/orders*.
+ */
+function uc_order_upload_can_view_order($order_id) {
+  global $user;
+  $order = uc_order_load((int) $order_id);
+
+  $access = user_access('edit orders') || user_access('view all orders') || ($user->uid && user_access('view own orders') && $user->uid == $order->uid);
+
+  return $access;
+}
+
+function uc_order_upload_delete_file($order_id, $file_md5) {
+  $order = uc_order_load($order_id);
+  foreach ($order->data['order_upload'] as $filename => $title) {
+    if (md5($filename) == $file_md5) {
+      unset($order->data['order_upload'][$filename]);
+      unlink($filename);
+      drupal_set_message(t('File was deleted'));
+      uc_order_save($order);
+    }
+  }
+  drupal_goto('admin/store/orders/' . $order_id);
+}
+
+/**
+ * hook_perm()
+ */
+function uc_order_upload_perm() {
+  return array('attach files to orders');
+} 
+
+
+/**
+ * Implementation of hook_order_pane().
+ * @returns an array of order panes
+ */
+function uc_order_upload_order_pane() {
+  $panes[] = array(
+    'id' => 'order_upload',
+    'callback' => 'uc_order_upload_order_pane_order_files',
+    'title' => t('Download order files'),
+    'desc' => t('File uploads for products in order.'),    
+    'weight' => -1,
+    'show' => array('view', 'edit', 'customer'),
+  );
+  return $panes;
+} 
+
+
+function uc_order_upload_order_pane_order_files($op, $order) {  
+  switch ($op) {
+    case 'view':
+    case 'customer':    
+      $edit_access = user_access('attach files to orders');
+      
+      $module_path = drupal_get_path('module', 'uc_order_upload');
+      //drupal_add_css($module_path . '/uc_order_upload.css', 'module');
+      
+      $output = '';
+      $rows = array();
+      if (isset($order->data['order_upload'])) {
+        foreach ($order->data['order_upload'] as $filepath => $title) {
+          $download_link = '&nbsp;&nbsp; <strong>' . l(t('Download'), 'order/' . $order->order_id . '/download/' . md5($filepath)) . '<strong>';
+          $rows[] = array(
+            $title, $download_link . 
+            ($edit_access ? ' &nbsp;&nbsp; '. l('Delete', 'order_upload/'. $order->order_id .'/delete/'. md5($filepath)) : NULL)
+          );
+        }
+      }
+      
+      if ($rows) {        
+        $output .= theme('table', array(t('Title'), t('Actions')), $rows);
+      }
+      
+      if ($edit_access) {
+        $output .= drupal_get_form('uc_order_upload_order_pane_attach_files_form', $order);
+      }
+
+      return $output;
+
+      break;
+  }
+}
+
+
+function uc_order_upload_order_pane_attach_files_form($form_state, $order) {
+  $form = array();
+  $form['#attributes'] = array(
+    'enctype' => 'multipart/form-data',
+  );
+
+  
+    
+  $form['#order'] = $order;
+  $form['container'] = array(
+    '#type' => 'fieldset',
+    '#collapsible' => FALSE,
+    '#title' => t('Upload new file'),
+    '#tree' => FALSE,
+  );
+  
+  $form['container']['file'] = array(
+    '#type' => 'file',    
+    '#title' => t('File'),    
+  );
+  
+  $form['container']['file_title'] = array(
+    '#type' => 'textfield',
+    '#title' => t('File title'),
+    '#description' => t('Leave empty to use filename as title'),
+  );
+ 
+
+  $form['container']['upload'] = array(
+    '#type' => 'submit',
+    '#value' => t('Upload Selected files'),
+  );
+  return $form;
+}
+
+function uc_order_upload_order_pane_attach_files_form_submit($form, &$form_state) {
+  $files = array();
+  if ($file = file_save_upload('file')) {
+    $dir = file_directory_path() . '/order_upload';
+    $dir_exists = file_check_directory($dir);
+    if (!$dir_exists) {      
+      $dir_created = file_check_directory($dir, FILE_CREATE_DIRECTORY); 
+      if ($dir_created) {
+        file_put_contents($dir .'/.htaccess', 'deny from all');
+        drupal_set_message(t('Protected directory for files was created'));
+      } 
+      else {
+        drupal_set_message(t('Having problem creating protected dir for files!'), 'error');
+      }
+      
+    }
+    
+    $filename = file_create_filename($file->filename, $dir);    
+    rename($file->filepath, $filename);
+    
+    if (empty($form_state['values']['file_title'])) {
+      $form_state['values']['file_title'] = $file->filename;
+    }
+    
+    $order_files = @$form['#order']->data['order_upload'];
+    if (!is_array($order_files)) $order_files = array();
+    $order_files[$filename] = $form_state['values']['file_title'];
+    $form['#order']->data['order_upload'] = $order_files;
+    uc_order_save($form['#order']);
+    
+    
+    drupal_set_message(t('File was uploaded successfully'));   
+  }
+}

@@ -1,0 +1,513 @@
+<?php
+
+/**
+ * @file
+ * Install and uninstall routines for chatblock module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function chatblock_schema() {
+  return array(
+    'chatblock' => array(
+      'description' => 'Chat messages for the on site chat block.',
+      'fields' => array(
+        'messageid' => array(
+          'type' => 'serial',
+          'size' => 'big',
+          'not null' => TRUE,
+          'unsigned' => TRUE,
+        ),
+        'uid' => array(
+          'type' => 'int',
+          'size' => 'normal',
+          'not null' => FALSE,
+        ),
+        'username' => array(
+          'type' => 'varchar',
+          'length' => 60,
+        ),
+        'message' => array(
+          'description' => 'Chat message content.',
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+        ),
+        'timestamp' => array(
+          'type' => 'int',
+          'size' => 'big',
+          'unsigned' => TRUE,
+        ),
+      ),
+      'primary key' => array('messageid'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_install().
+ */
+function chatblock_install() {
+  $t = get_t();
+  global $base_path;
+
+  // Create database table.
+  drupal_install_schema('chatblock');
+
+  $module_path = dirname(__FILE__);
+  $cache_path = $module_path . '/cache/tmp';
+
+  // Create tmp directory for cache files unless existing.
+  if (!is_dir($cache_path)) {
+    if (!mkdir($cache_path)) {
+      drupal_set_message(
+        $t('Unable to create <em>[module_dir]/chatblock/cache/tmp</em> directory. Please create one and make sure to make it writeable for Drupal.'),
+        'error'
+      );
+    }
+  }
+
+  // Try to copy callback handler to root directory.
+  if (!file_exists($_SERVER['DOCUMENT_ROOT'] . $base_path . 'chatblock.php')) {
+    if (copy($module_path . '/chatblock.php', $_SERVER['DOCUMENT_ROOT'] . $base_path . 'chatblock.php')) {
+      drupal_set_message($t('Successfully copied the callback handler "chatroom.php" to your Drupal root directory.'));
+    }
+    else {
+      drupal_set_message(
+        $t('Failed to copy the callback handler "chatroom.php" to your Drupal root. You should do this manually right now.'),
+        'error'
+      );
+    }
+  }
+  else {
+    drupal_set_message(
+      $t('Did not attempt to copy the callback handler "chatroom.php" to your Drupal root as there already is a file with the same name. Make sure this is the right file, otherwise copy the file manually from the chatblock module folder to your Drupal root.'),
+      'error'
+    );
+  }
+
+  // As there may be more than one Drupal site sharing this module in a multisite
+  // setup, we will use the "site name" variable as the most unique
+  // available default id. This is done to at least somehow prevent APC
+  // from accidentaly sharing one site's cache with another.
+
+  _chatblock_install_cache_id();
+}
+
+/**
+ * Helper function to initialize the APC cache id.
+ *
+ * @return string
+ *   The just generated cache ID.
+ */
+function _chatblock_install_cache_id() {
+  $cache_id = variable_get('chatblock_cache_id', NULL);
+  if ($cache_id === NULL) {
+    $cache_id = preg_replace(
+      '/[^a-zA-Z0-9]/',
+      '',
+      $_SERVER['HTTP_HOST']
+    );
+    if ($cache_id == '') {
+      $cache_id = 'site' . rand(100, 999);
+    }
+
+    // Just for protection. You knever know.
+    if  (strlen($cache_id) > 256) {
+      $cache_id = substr($cache_id, 0, 256);
+    }
+
+    variable_set('chatblock_cache_id', $cache_id);
+  }
+  return $cache_id;
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function chatblock_requirements($phase) {
+  global $base_path;
+
+  $requirements = array();
+  if ($phase == 'runtime') {
+    $drupal_root = $_SERVER['DOCUMENT_ROOT'] . base_path();
+    $module_dir = $drupal_root . drupal_get_path('module', 'chatblock');
+
+    $callback_info = array();
+    $performance_faults = 0;
+
+    // Check performance requirements and evaluate them.
+    // 1a. Is chatblock.php in the Drupal root?
+    if (!file_exists($drupal_root . '/chatblock.php')) {
+      $callback_info[] = '<li>' . t(
+        'copy the <em>chatblock.php</em> file from %module_dir to %drupal_root.',
+        array('%module_dir' => $module_dir, '%drupal_root' => $drupal_root)
+      ) . '</li>';
+      $performance_faults++;
+    }
+    // 1b. Do chatblock.php versions match?
+    elseif (
+      file_get_contents($module_dir . '/chatblock.php')
+      !=
+      file_get_contents($drupal_root . '/chatblock.php')
+    ) {
+      $callback_info[] = '<li>' . t(
+        'make sure that <em>chatblock.php</em> file versions in %module_dir and %drupal_root are equal.',
+        array('%module_dir' => $module_dir, '%drupal_root' => $drupal_root)
+      ) . '</li>';
+      $performance_faults++;
+    }
+    // 2. Is a JS callback handler present?
+    if (!module_exists('js') && !module_exists('js_callback')) {
+      $callback_info[] = '<li>' . t(
+        'have <a href="@js_module_url">js.module</a> or <a href="@js_callback_url">js_callback.module</a> installed and enabled.',
+        array('@js_module_url' => "http://drupal.org/project/js", '@js_callback_url' => "http://drupal.org/project/js_callback")
+      ) . '</li>';
+      $performance_faults++;
+    }
+    // 3. Is APC available?
+    if (!function_exists('apc_fetch')) {
+      $callback_info[] = '<li>' . t(
+        'install the <a href="@apc_url">PHP APC extension</a>.',
+        array('@apc_url' => "http://pecl.php.net/apc")
+      ) . '</li>';
+      $performance_faults += 2;
+    }
+    // 4. Is cache/tmp existing and writeable?
+    $tmpdir = $module_dir . '/cache/tmp';
+    if (
+      !is_dir($tmpdir)
+      ||
+      !@is_writable($tmpdir)
+    ) {
+      $callback_info[] = '<li>' . t(
+        'make sure that the directory %directory exists and is writeable by Drupal. At least one of these is not the case at the moment.',
+        array('%directory' => $tmpdir)
+      ) . '</li>';
+      $performance_faults += 2;
+    }
+    if (!empty($callback_info)) {
+      if ($performance_faults > 2) {
+        $severity = REQUIREMENT_ERROR;
+        $warning_intro = t('Your system configuration is likely to run into performance issues.');
+      }
+      else {
+        $severity = REQUIREMENT_WARNING;
+        $warning_intro = t('Your system is not optimally configured.');
+      }
+      $result = $warning_intro . ' ' . t(
+        'For optimal chatblock performance you should: <ul>!actions</ul>',
+        array('!actions' => implode('', $callback_info))
+      );
+    }
+    else {
+      $result = t('It looks like you have done everything right to have your chatblock as performant as possible!');
+    }
+    $requirements['chatblock_callbacks'] = array(
+      'title' => t('Chatblock'),
+      'severity' => $severity,
+      'value' => $result,
+    );
+  }
+  return $requirements;
+}
+
+/*
+ * Implementation of hook_uninstall
+ */
+function chatblock_uninstall() {
+
+  // Conditionally remove persistant APC variables.
+  require_once(dirname(__FILE__) . '/cache/apc.inc');
+  if (CHATBLOCK_IS_APC) {
+    if ($cache_data = apc_cache_info('user')) {
+      foreach($cache_data['cache_list'] as $item) {
+        if(strpos($item['info'], 'chatblock_' . CHATBLOCK_CACHE_ID . '_') === 0) {
+          apc_delete($item['info']);
+        }
+      }
+    }
+  }
+
+  // Delete database table.
+  drupal_uninstall_schema('chatblock');
+
+  // Clear drupal variables.
+  variable_del('chatblock_add_smileys');
+  variable_del('chatblock_autodelete_unit');
+  variable_del('chatblock_autodelete_value');
+  variable_del('chatblock_cache_id');
+  variable_del('chatblock_chat_height');
+  variable_del('chatblock_default_title');
+  variable_del('chatblock_detect_urls');
+  variable_del('chatblock_get_url');
+  variable_del('chatblock_guest_prefix');
+  variable_del('chatblock_infopage_custom_content');
+  variable_del('chatblock_infopage_custom_content_format');
+  variable_del('chatblock_input_label');
+  variable_del('chatblock_link_users');
+  variable_del('chatblock_log_messages_per_page');
+  variable_del('chatblock_minimize_input_form');
+  variable_del('chatblock_maximum_retrospect');
+  variable_del('chatblock_number_messages');
+  variable_del('chatblock_permission_hint');
+  variable_del('chatblock_poll_rate_default');
+  variable_del('chatblock_poll_rate_max');
+  variable_del('chatblock_show_function_links');
+  variable_del('chatblock_show_logins');
+  variable_del('chatblock_show_logouts');
+  variable_del('chatblock_show_timestamps');
+  variable_del('chatblock_smart_poll_stepwidth');
+  variable_del('chatblock_timestamp_format');
+  variable_del('chatblock_timestamp_format_logs');
+  variable_del('chatblock_timestamp_tooltip');
+
+  // Delete callback handler from root directory.
+  if (file_exists($_SERVER['DOCUMENT_ROOT'] . base_path() . 'chatblock.php')) {
+    if (
+      file_get_contents($_SERVER['DOCUMENT_ROOT'] . base_path() . 'chatblock.php')
+      ==
+      file_get_contents(dirname(__FILE__) . '/chatblock.php')
+    ) {
+      // Only delete the callback handler if it has not been changed.
+      if (unlink($_SERVER['DOCUMENT_ROOT'] . base_path() . 'chatblock.php')) {
+        drupal_set_message(t('Successfully removed the callback handler from your Drupal root directory.'));
+      }
+      else {
+        drupal_set_message(
+          ('Failed to remove the callback handler ("chatblock.php") from your Drupal root directory.'),
+          'error'
+        );
+      }
+    }
+    else {
+      drupal_set_message(
+        t('The callback handler ("chatblock.php") has not been removed from your Drupal root directory as it appears to have been edited.'),
+        'warning'
+      );
+    }
+  }
+}
+
+
+/**
+ * Implements hook_update_N().
+ */
+function chatblock_update_1() {
+  $items = array();
+  $items[] = update_sql("ALTER TABLE {chatblock} CHANGE timestamp timestamp BIGINT( 14 ) NULL DEFAULT NULL");
+  return $items;
+}
+
+/**
+ * Implements hook_update_N().
+ */
+function chatblock_update_2() {
+  $items = array();
+
+  switch ($GLOBALS['db_type']) {
+    case 'mysql':
+    case 'mysqli':
+      break;
+
+    case 'pgsql':
+      $items[] = update_sql("ALTER TABLE {chatblock} ALTER 'timestamp' TYPE bigint;");
+      break;
+  }
+
+  return $items;
+}
+
+/**
+ * Implements hook_update_N().
+ */
+function chatblock_update_6003() {
+  $ret = array();
+  db_add_field(
+    $ret,
+    'chatblock',
+    'uid',
+    array(
+      'type' => 'int',
+      'size' => 'normal',
+      'not null' => TRUE,
+    )
+  );
+  db_change_field(
+    $ret,
+    'chatblock',
+    'messageid',
+    'messageid',
+    array(
+      'type' => 'serial',
+      'size' => 'big',
+      'not null' => TRUE,
+    )
+  );
+  return $ret;
+}
+
+/**
+ * Implements hook_update_N().
+ */
+function chatblock_update_6004() {
+  $ret = array();
+  db_change_field(
+    $ret,
+    'chatblock',
+    'uid',
+    'uid',
+    array(
+      'type' => 'int',
+      'size' => 'normal',
+      'not null' => FALSE,
+    )
+  );
+  return $ret;
+}
+
+/**
+ * Implements hook_update_N().
+ *
+ * More update service by cleaning up/migrating Drupal variables.
+ */
+function chatblock_update_6005() {
+  // Migrate renamed variables.
+  variable_set(
+    'chatblock_poll_rate_default',
+    variable_get('chatblock_refresh_rate', 8)
+  );
+  variable_del('chatblock_refresh_rate');
+  
+  // No longer needed variables.
+  variable_del('chatblock_get_url');
+  variable_del('chatblock_ignore_user_1');
+  variable_del('chatboxlastmessage');
+  variable_del('chatblock_show_empty');
+  return array();
+}
+
+/**
+ * Implements hook_update_N().
+ *
+ * Forces a menu refresh due to altered menu items and callback paths.
+ */
+function chatblock_update_6006() {
+  menu_rebuild();
+  return array();
+}
+
+/**
+ * Implements hook_update_N().
+ *
+ * Moves the old autodelete settings var to a new scheme.
+ */
+function chatblock_update_6007() {
+  $old_value = variable_get('chatblock_autodelete', 0);
+  // Calculate the new value and unit from the old setting.
+  switch ($old_value) {
+    case 1:
+      $value = 1;
+      $unit = 0;
+      break;
+    case 2:
+      $value = 1;
+      $unit = 1;
+      break;
+    case 3:
+      $value = 2;
+      $unit = 1;
+      break;
+    case 4:
+      $value = 1;
+      $unit = 2;
+      break;
+  }
+  variable_set('chatblock_autodelete_value', (int) $value);
+  variable_set('chatblock_autodelete_unit', (int) $unit);
+
+  // Remove the old setting.
+  variable_del('chatblock_autodelete');
+  return array();
+}
+
+/**
+ * Implements hook_update_N().
+ *
+ * Moves the old autodelete settings var to a new scheme.
+ */
+function chatblock_update_6008() {
+  // Added two options (minutes, hours). Shift the existing choice.
+  variable_set('chatblock_autodelete_unit', variable_get('chatblock_autodelete_unit', 0) + 2);
+  return array();
+}
+
+
+/**
+ * Implements hook_update_N().
+ *
+ * Change messageid and timestamp to unsigned types.
+ * Transform pseudo-microtime-stamps to regular Unix timestamps.
+ */
+function chatblock_update_6009() {
+  $ret = array();
+  db_change_field(
+    $ret,
+    'chatblock',
+    'timestamp',
+    'timestamp',
+    array(
+      'type' => 'int',
+      'size' => 'big',
+      'unsigned' => TRUE,
+    )
+  );
+  db_change_field(
+    $ret,
+    'chatblock',
+    'messageid',
+    'messageid',
+    array(
+      'type' => 'serial',
+      'size' => 'big',
+      'unsigned' => TRUE,
+      'not null' => TRUE,
+    )
+  );
+  $ret[] = update_sql('UPDATE {chatblock} SET timestamp = timestamp/100');
+  return $ret;
+}
+
+/**
+ * Implements hook_update_N().
+ *
+ * Change cache namespace management.
+ */
+function chatblock_update_6010() {
+  $cid = _chatblock_install_cache_id();
+  if (function_exists('apc_fetch')) {
+    $val = apc_fetch('chatblock_max_id');
+    if (
+      $val !== false
+      &&
+      apc_fetch("chatblock_$cid_max_id") === FALSE
+    ) {
+      apc_store("chatblock_$cid_max_id", $val);
+    }
+    apc_delete('chatblock_max_id');
+  }
+  return array();
+}
+
+
+/**
+ * Implements hook_update_N().
+ *
+ * Deletes false-named variable from earlier versions.
+ */
+function chatblock_update_6011() {
+  variable_set('chatblock_default_title', variable_get('chatbock_default_title', t('Chat')));
+  variable_del('chatbock_default_title');
+  return array();
+}

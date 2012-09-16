@@ -1,0 +1,13 @@
+; $Id: uc_multi_coupon.info,v 1.1 2010/12/09 08:39:53 sijumpk Exp $ 
+name = Ubercart multiple coupon
+description = Allows user to add multiple coupons to order
+core = 6.x
+dependencies[] = uc_cart
+dependencies[] = uc_coupon
+package = Ubercart - payment
+; Information added by drupal.org packaging script on 2010-12-09
+version = "6.x-1.0"
+core = "6.x"
+project = "uc_multi_coupon"
+datestamp = "1291893940"
+

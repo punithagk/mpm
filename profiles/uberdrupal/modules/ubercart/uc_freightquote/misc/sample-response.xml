@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" 
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<soap:Body>
+  <GetRatingEngineQuoteResponse xmlns="http://tempuri.org/">
+    <GetRatingEngineQuoteResult>
+      <QuoteId>33978965</QuoteId>
+      <QuoteDateTime>2010-06-08T13:20:42.7677856-05:00</QuoteDateTime>
+      <QuoteExpiration>2010-07-08T13:20:42.7677856-05:00</QuoteExpiration>
+      <QuoteDurationMilliseconds>3555</QuoteDurationMilliseconds>
+      <UnitOfMeasureType>English</UnitOfMeasureType>
+      <QuoteCarrierOptions>
+        <CarrierOption>
+          <CarrierOptionId>1</CarrierOptionId>
+          <CarrierName>Carrier One Freight Lines</CarrierName>
+          <QuoteAmount>371.87</QuoteAmount>
+          <Currency>USD</Currency>
+          <IsGuaranteed>false</IsGuaranteed>
+          <IsTMS>false</IsTMS>
+          <Transit>3</Transit>
+          <TariffMultiplier>1</TariffMultiplier>
+          <Mode>LTL</Mode>
+          <ProviderList />
+          <CarrierAccessorials>
+            <Accessorial>
+              <AccessorialId>6</AccessorialId>
+              <AccessorialDescription>Liftgate pickup</AccessorialDescription>
+              <AccessorialCharge>40</AccessorialCharge>
+            </Accessorial>
+            <Accessorial>
+              <AccessorialId>7</AccessorialId>
+              <AccessorialDescription>Liftgate delivery</AccessorialDescription>
+              <AccessorialCharge>40</AccessorialCharge>
+            </Accessorial>
+            <Accessorial>
+              <AccessorialId>158</AccessorialId>
+              <AccessorialDescription>Fuel surcharge</AccessorialDescription>
+              <AccessorialCharge>38.24</AccessorialCharge>
+            </Accessorial>
+          </CarrierAccessorials>
+        </CarrierOption>
+        <CarrierOption>
+          <CarrierOptionId>2</CarrierOptionId>
+          <CarrierName>Carrier Two Transportation Services</CarrierName>
+          <QuoteAmount>394.22</QuoteAmount>
+          <Currency>USD</Currency>
+          <IsGuaranteed>false</IsGuaranteed>
+          <IsTMS>false</IsTMS>
+          <Transit>3</Transit>
+          <TariffMultiplier>1</TariffMultiplier>
+          <Mode>LTL</Mode>
+          <ProviderList />
+          <CarrierAccessorials>
+            <Accessorial>
+              <AccessorialId>6</AccessorialId>
+              <AccessorialDescription>Liftgate pickup</AccessorialDescription>
+              <AccessorialCharge>50</AccessorialCharge>
+            </Accessorial>
+            <Accessorial>
+              <AccessorialId>7</AccessorialId>
+              <AccessorialDescription>Liftgate delivery</AccessorialDescription>
+              <AccessorialCharge>50</AccessorialCharge>
+            </Accessorial>
+            <Accessorial>
+              <AccessorialId>158</AccessorialId>
+              <AccessorialDescription>Fuel surcharge</AccessorialDescription>
+              <AccessorialCharge>44.72</AccessorialCharge>
+            </Accessorial>
+          </CarrierAccessorials>
+        </CarrierOption>
+      </QuoteCarrierOptions>
+      <ValidationErrors />
+    </GetRatingEngineQuoteResult>
+  </GetRatingEngineQuoteResponse>
+</soap:Body>
+</soap:Envelope>

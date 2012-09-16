@@ -1,0 +1,14 @@
+;$Id: barcode.info,v 1.1 2008/11/17 21:30:35 skyredwang Exp $
+name = Barcode
+description = Generate a barcode image on the fly. It supports EAN-13,EAN-8,UPC-A,UPC-E,ISBN ,2 of 5 Symbologies(std,ind,interleaved),postnet,codabar,code128,code39,code93 symbologies.
+dependencies[] = content
+package = CCK
+core = 6.x
+
+
+; Information added by drupal.org packaging script on 2010-03-09
+version = "6.x-1.0-rc5"
+core = "6.x"
+project = "barcode"
+datestamp = "1268156104"
+

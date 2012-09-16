@@ -1,0 +1,13 @@
+; $Id: uc_price_visibility.info,v 1.2 2010/11/18 16:17:37 joelstein Exp $
+name = Price Visibility
+description = Provides options to toggle visibility of prices per product.
+core = 6.x
+package = Ubercart - extra
+dependencies[] = uc_product
+
+; Information added by drupal.org packaging script on 2010-11-18
+version = "6.x-1.1"
+core = "6.x"
+project = "uc_price_visibility"
+datestamp = "1290105410"
+

@@ -1,0 +1,13 @@
+name = Ubercart Conditional Attributes
+version = 1.4
+description = Conditionally hide attributes depending on user selection. Helps when creating complex product configurations by hiding attributes that are only applicable based on other attribute selections.
+dependencies[] = uc_product
+dependencies[] = uc_attribute
+core = 6.x
+
+; Information added by drupal.org packaging script on 2012-01-22
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "uc_conditional_attributes"
+datestamp = "1327196305"
+

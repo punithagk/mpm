@@ -1,0 +1,738 @@
+<?php
+
+function shopping_cart_init() {
+	
+	drupal_add_js(drupal_get_path('module', 'shopping_cart') .'/cart.js');
+}
+function shopping_cart_twitter_pull_blocks() {
+
+
+  return array(
+    0 => (object) array(
+      'tweetkey' => '@MyPrintMarket',
+      'title' => '@MyPrintMarket Updates',
+      'name'  => 'Your Tweets',    
+      'number_of_items' => 2,
+      'theme_key' => 'custom_twitter_pull_listing',    
+    )
+  );
+  
+}
+
+function shopping_cart_block($op = 'list', $delta = 0, $edit = array()) {
+
+
+  switch ($op) {
+    case 'list':
+	$block[0] = array(
+			'info' => t('List All Product'),
+			'cache' => BLOCK_NO_CACHE,
+			);
+	$block[1] = array(
+			'info' => t('Product Template'),
+			'cache' => BLOCK_NO_CACHE,
+			);
+	$block[2] = array(
+			'info' => t('Shipping Time Calculator'),
+			'cache' => BLOCK_NO_CACHE,
+			);
+	$block[3] = array(
+			'info' => t('Place Your Order'),
+			'cache' => BLOCK_NO_CACHE,
+			);
+	$block[4] = array(
+			'info' => t('Share This Product'),
+			'cache' => BLOCK_NO_CACHE,
+			);
+    $block[5] = array(
+                        'info' => t('Product Slider'),
+                        'cache' => BLOCK_NO_CACHE,
+                        );
+	$block[6] = array(
+                        'info' => t('Email Signup'),
+                        'cache' => BLOCK_NO_CACHE,
+                        );
+	return $block;
+
+    case 'view':
+      $block = array();
+      if (user_access('view catalog')) {
+        switch ($delta) {
+          case 0:
+		// Get the vocabulary tree information.
+		$alias = drupal_get_path_alias($_GET['q']);
+		$path = explode("/",$alias);
+		$tids = array();
+		if(!isset($path[3]))
+		{
+			$term = taxonomy_get_term_by_name(str_replace("-"," ",$path[1]));
+			$tids[] = $term[0]->tid;
+		} 
+		else {
+			$term = taxonomy_get_term_by_name(str_replace("-"," ",$path[3]));
+			$tids[] = $term[0]->tid;			
+		}
+						
+		$list_term = taxonomy_select_nodes($tids);
+		$load_image = array();
+		while($row = db_fetch_object($list_term)) {
+			$node = node_load($row->nid);
+			if(!empty($node->field_image_cache[0])){
+				$load_image[] = array("image" => $node->field_image_cache[0], "path" => $node->path);
+			}
+		}           
+		$content = theme('list_node_image', $load_image);
+		$subject = 'List All Product';
+		$block = array('subject' => $subject, 'content' => $content);
+		break;
+	  case 1:
+		// Get the vocabulary tree information.
+		$alias = drupal_get_path_alias($_GET['q']);
+		$path = explode("/",$alias);
+		$tids = array();
+		$templates = array();
+		if(arg(1))
+		{
+			$node = node_load(arg(1));
+			$i = 0;
+			$count = count($node->field_ai_template);
+			while($i < $count){
+				$desc = $node->field_ai_template[$i]['data']['description'];
+				$templates[] = array("title" => $desc, 
+						     "ai_template" => $node->field_ai_template[$i], 
+						     "eps_template" => $node->field_eps_template[$i], 
+						     "pdf_template" => $node->field_pdf_template[$i], 
+						     "psd_template" => $node->field_psd_template[$i]);				
+				$i++;
+			}
+		} 
+		else {
+			$term = taxonomy_get_term_by_name(str_replace("-"," ",$path[3]));
+			$tids[] = $term[0]->tid;
+			$list_term = taxonomy_select_nodes($tids);
+				
+			while($row = db_fetch_object($list_term)) {
+				$node = node_load($row->nid);
+				$templates[] = array("title" => $node->title, 
+						     "ai_template" => $node->field_ai_template[0], 
+						     "eps_template" => $node->field_eps_template[0], 
+						     "pdf_template" => $node->field_pdf_template[0], 
+						     "psd_template" => $node->field_psd_template[0]);				
+			} 
+		}
+			          
+		$content = theme('product_template', $templates);
+
+		$subject = 'Product Template';
+		$block = array('subject' => $subject, 'content' => $content);
+		break;
+	  case 2:	    
+		$node 		= node_load(arg(1));
+		
+		$prod_string = '';
+		$prod_string .= '|'. $node->nid;
+		$prod_string .= '^'. $node->title;
+		$prod_string .= '^'. $node->model;
+		$prod_string .= '^'. 1;
+		$prod_string .= '^'. 1;
+		$prod_string .= '^'. $node->cost;
+		//$prod_string .= '^'. $node->sell_price;
+		$prod_string .= '^'. $node->weight;
+		$prod_string .= '^'. serialize($node->data);
+		$prod_string = substr($prod_string, 1);
+		$country_id = uc_store_default_country();
+		$content = theme('shipping_time_calculator', drupal_urlencode($prod_string), $country_id);
+		$subject = 'Shipping Time Calculator';
+		$block = array('subject' => $subject, 'content' => $content);
+		break;
+	  case 3:
+		$node 		= node_load(arg(1));
+		$form 		= drupal_get_form('uc_product_add_to_cart_form', $node);
+		$context = array(
+					'revision' => 'themed',
+					'type' => 'product',
+					'class' => array(
+					'product',
+					),
+					'subject' => array(
+					'node' => $product,
+					),
+					);
+
+		// Render the updated display price
+		$context['class'][1] = 'display';
+		$context['field'] = 'sell_price';
+		$content 	= theme('place_your_order', $form, theme('uc_product_price',$node->sell_price, $context), theme('uc_product_price',$node->cost, $context), $node->nid);
+		$block 		= array('subject' => $subject, 'content' => $content);
+		break;
+	  case 4:
+		$content = theme('share_this_product');
+		$subject = 'Share This Product';
+		$block = array('subject' => $subject, 'content' => $content);
+		break;
+          case 5:
+                // Get the vocabulary tree information.
+                $alias = drupal_get_path_alias($_GET['q']);
+                $path = explode("/",$alias);
+                $tids = array();
+                if(isset($path[3]))
+                {
+                        $term = taxonomy_get_term_by_name(str_replace("-"," ",$path[3]));
+                        $tids[] = $term[0]->tid;
+                }
+
+                $list_term = taxonomy_select_nodes($tids);
+                $load_image = array();
+                while($row = db_fetch_object($list_term)) {
+                        $node = node_load($row->nid);
+                        $load_image[] = array("image" => $node->field_image_cache[0], "path" => $node->path);                 
+                }
+                $content = theme('list_node_image', $load_image);
+                $subject = 'List All Product';
+                $block = array('subject' => $subject, 'content' => $content);
+                break;
+	  case 6:
+		$content = theme('email_signup');
+		$subject = 'Email Signup';
+		$block = array('subject' => $subject, 'content' => $content);
+		break;
+        }
+      }
+    return $block;
+  }
+  
+}
+
+function shopping_cart_menu() {
+	$items = array();
+	$items['checkout-upload-files'] = array(
+		'page callback' => 'drupal_get_form',
+		'page arguments' =>  array('checkout_upload_files_from'),
+		'access callback' => TRUE,		
+		'type' => MENU_CALLBACK,
+	);
+	
+	$items['shipping-calculator'] = array(
+		'page callback' => 'shipping_calculator',
+		'access callback' => TRUE,		
+		'type' => MENU_CALLBACK,
+	);
+
+        $items['coating-validator'] = array(
+                'page callback' => 'coating_validator',
+                'access callback' => TRUE,
+                'type' => MENU_CALLBACK,
+        );
+
+	
+	
+	$items['product-details-path-find'] = array(
+		'page callback' => 'product_details_path_find',
+		'access callback' => TRUE,		
+		'type' => MENU_CALLBACK,
+	);
+	$items['get-product-lists'] = array(
+		'page callback' => 'get_product_lists',
+		'access callback' => 'user_access',		
+		'type' => MENU_CALLBACK,
+	);		
+	$items['admin/store/products/adjustment'] = array(
+		'title' => t('Products Price Adjustment'),
+		'page callback' => 'drupal_get_form',
+		'page arguments' =>  array('proudct_price_adjustment_form'),
+		'access callback' => 'user_access',		
+		'type' => MENU_LOCAL_TASK,		
+	);
+	$items['admin/store/products/barcode'] = array(
+		'title' => t('Barcode Test'),
+		'page callback' => 'drupal_get_form',
+		'page arguments' =>  array('barcode_test_form'),
+		'access callback' => 'user_access',		
+		'type' => MENU_LOCAL_TASK,		
+	);
+	$items['productorder/%/download/%'] = array(
+		'page callback' => 'productorder_download_transfer',
+		'page arguments' => array(1, 3),
+		'access callback' => 'user_access',		
+		'type' => MENU_CALLBACK
+    );
+	$items['productorder_upload/%/delete/%'] = array(
+		'page callback' => 'productorder_delete_transfer',
+		'page arguments' => array(1, 3),
+		'access callback' => 'user_access',		
+		'type' => MENU_CALLBACK
+    );
+	$items['my-profile'] = array(
+	   'title' => t('My Profile'),
+	   'page callback' => 'user_my_profile',
+	   'access callback' => 'user_is_logged_in',
+	   'type' => MENU_NORMAL_ITEM,
+	   'menu_name' => 'secondary-links',
+	   'weight' => -100,
+	);
+	return $items;
+}
+
+function coating_validator() {
+        $nid = $_POST['aac_nid'];
+        $attributes = isset($_POST['attributes']) ? $_POST['attributes'] : array();
+        $selected_options = array();
+        $attributes_map = array();
+	$return_array = array();
+
+	$node           = node_load($nid);
+	
+	foreach($node->attributes as $attr)
+        {
+	    $attributes_map[$attr->name] = $attr->aid;
+	}
+        foreach ($attributes as $key => $value) {
+                $selected_options[$key] = $value;
+        }
+
+        foreach($node->attributes as $attr)
+        {
+          $return_array[$attr->name] = $attr->options[$selected_options[$attributes_map[$attr->name]]]->name;
+        }
+	echo json_encode($return_array,TRUE);die();
+
+}
+
+function shipping_calculator() {
+	$nid = $_POST['aac_nid'];
+	$attributes = isset($_POST['attributes']) ? $_POST['attributes'] : array();
+	$paper_option = 0;
+	$quantity_option = 0;
+	$selected_options = array();
+	foreach ($attributes as $key => $value) {
+		$selected_options[$key] = $value;
+		if($key == 2)
+		{
+			$paper_option = $value;			
+		}
+		
+		if($key == 4)
+		{
+			$quantity_option = $value;			
+		}
+	}
+	
+	$node 		= node_load($nid);
+	foreach($node->attributes as $attr)
+	{		
+		if($attr->options[$selected_options[$attr->aid]]->weight > 0) {
+			$papers_weight = $papers_weight + $attr->options[$selected_options[$attr->aid]]->weight;
+		}
+		if($attr->name == "dd_quantity") {
+			$quantity = $attr->options[$quantity_option]->name;
+		}
+					
+	}
+	$weight = $papers_weight * $quantity;
+	
+	$prod_string = '';
+	$prod_string .= '|'. $node->nid;
+	$prod_string .= '^'. $node->title;
+	$prod_string .= '^'. $node->model;
+	$prod_string .= '^'. 1;
+	$prod_string .= '^'. 1;
+	$prod_string .= '^'. $node->cost;
+	//$prod_string .= '^'. $node->sell_price;
+	$prod_string .= '^'. $weight;
+	$prod_string .= '^'. serialize($node->data);
+	$prod_string = substr($prod_string, 1);
+	$country_id = uc_store_default_country();
+	echo json_encode(array("prod_string"=>drupal_urlencode($prod_string), "country"=>$country_id),TRUE);die();
+}
+function productorder_download_transfer($order_id, $filename) {
+	$sql = db_query("SELECT filename FROM {order_product_files} WHERE md5(filename) = '%s' ", $filename);
+	$filename =db_result($sql);
+	$filepath = file_directory_path() . '/order_upload/'.$filename;
+	//echo $filepath;die();
+	$url = file_create_path($filepath);
+	if (!file_exists($filepath)) {
+		drupal_not_found();
+		exit();
+	}
+	$headers = array(
+	'Content-type: ' . file_get_mimetype($filepath),
+	'Content-Disposition: attachment; filename="'. pathinfo($filepath, PATHINFO_FILENAME) .'"'
+	);
+	file_transfer($url, $headers);
+	exit();  
+	
+}
+
+function proudct_price_adjustment_form() {
+	$form = array();
+	
+	$taxonomy_ids = taxonomy_get_term_by_name('All Products');
+	$taxonomy_all_list = taxonomy_get_children($taxonomy_ids[0]->tid);
+	$catalog	= array();
+	foreach($taxonomy_all_list as $term)
+	{
+		$catalog[$term->tid] = $term->name;
+	}
+	
+	$form['catalog'] = array(
+	  '#type' => 'select',
+	  '#title' => t('Catalog'),
+	  '#attributes' => array('style' => 'width:200px;', 'onchange' => "get_products(this.value)"),
+	  '#options' => $catalog,
+	  '#required' => TRUE,
+	);
+	$catalog_key = array_keys($catalog);
+	$tids = array();
+	//$tids[] = $catalog_key[0];
+	$tids[] = 3;
+	$products = taxonomy_select_nodes($tids);
+	while($row = db_fetch_object($products)) {
+		$product[$row->nid] = $row->title;
+			             
+	}	
+	$form['product'] = array(
+	  '#prefix' => '<span id="product_list">',
+	  '#type' => 'select',
+	  '#title' => t('Product'),
+	  '#attributes' => array('style' => 'width:200px;'),
+	  '#options' => $product,
+	  '#suffix' => '</span',
+	  '#required' => TRUE,
+	);
+	$product_key = array_keys($product);
+	$attributes = uc_attribute_load_product_attributes($product_key[0]);
+	$attribute_list = array();
+	$header = array();
+	foreach($attributes as $item) {
+		$attribute_list[$item->aid] = $item->default_label;	
+		$header[] = $item->default_label;
+	}	
+	$form['attribute'] = array(
+	  '#prefix' => '<span id="attribute_list">',
+	  '#type' => 'select',
+	  '#title' => t('Attribute'),
+	  '#attributes' => array('style' => 'width:200px;'),
+	  '#options' => $attribute_list,
+	  '#suffix' => '</span',
+	  '#required' => TRUE,
+	);
+	
+
+	$attribute = uc_attribute_load(4);
+	foreach($attribute->options as $option) {
+             $opt_val[$option->name] = $option->price;
+        }
+
+/*	$att = array();
+	$opt = array();
+	foreach($attributes as $attribute) {
+		$att[$attribute->aid] = $attribute->default_label;
+		$opt_val = array();
+		foreach($attribute->options as $option) {
+			$opt_val[$option->name] = $option->price;
+		}
+		$opt[$attribute->aid] = $opt_val;
+	}
+	//print_r($att); 
+	//print_r($opt);
+	$table = array();
+	foreach($att as $key => $att_name)
+	{
+		//echo $att_name;
+		$colums = array();
+		foreach($opt[$key] as $option => $price)
+		{
+			//echo " option ".$option;
+			//echo "=".$price."<br>";	
+			$colums[] = array("option" => $option, "price" => $price);
+		}
+		$table[] = $colums;
+		
+	}
+	
+	foreach($table as $key => $option_price)
+	{
+		print_r($option_price);
+		echo $option_price["option"]." <br>";
+		
+	}
+	
+*/		
+	
+	
+	return $form;
+}
+function get_product_lists() {
+
+	$tids = array();
+	$tids[] = $_POST['catalog_id'];
+	$products = taxonomy_select_nodes($tids);
+	while($row = db_fetch_object($products)) {
+		$product[$row->nid] = $row->title;
+			             
+	}	
+	$form['product'] = array(
+	  '#type' => 'select',
+	  '#title' => t('Product'),
+	  '#attributes' => array('style' => 'width:200px;'),
+	  '#options' => $product,
+	  '#required' => TRUE,
+	);
+	print json_encode(array('product' =>drupal_render($form['product'])), TRUE);
+	
+}
+
+function product_details_path_find() {
+	$product_title = $_POST['product_title'];
+	$node = node_load(array("title" => $product_title));
+	echo json_encode(array("node_path" => $node->path), TRUE);
+	die();
+}
+
+function checkout_upload_files_from() {
+	$form = array();
+  $form['#attributes'] = array(
+    'enctype' => 'multipart/form-data',
+  );
+
+
+  $form['upload'] = array(
+    '#type' => 'submit',
+    '#value' => t('Upload Selected files'),
+  );
+  $_SESSION['checkout_order_upload_files'] = array();
+  return $form;
+
+}
+function checkout_upload_files_from_submit() {
+	
+	$cart_item_ids 	= $_POST['cart_item_id'];
+	$product_nid 	= $_POST['product_nid'];
+	$product_title 	= $_POST['product_title'];
+	$i = 0;
+	foreach($cart_item_ids as $cart_item_id) {
+		if ($file 	= file_save_upload('file_1_'.$cart_item_id)) {
+			save_product_files($file, $product_nid[$i], $product_title[$i]);
+	    }
+		if ($file 	= file_save_upload('file_2_'.$cart_item_id)) {
+			save_product_files($file, $product_nid[$i], $product_title[$i]);
+	    }
+		$i++;
+	}
+	drupal_goto("cart/checkout");
+}
+
+function save_product_files($file, $product_nid, $product_title) {
+	$dir = file_directory_path() . '/order_upload';
+	$dir_exists = file_check_directory($dir);
+	if (!$dir_exists) {      
+	  $dir_created = file_check_directory($dir, FILE_CREATE_DIRECTORY); 
+	  if ($dir_created) {
+		file_put_contents($dir .'/.htaccess', 'deny from all');
+		drupal_set_message(t('Protected directory for files was created'));
+	  } 
+	  else {
+		drupal_set_message(t('Having problem creating protected dir for files!'), 'error');
+	  }
+	  
+	}		
+	$filename = file_create_filename($file->filename, $dir);    
+	rename($file->filepath, $filename);
+   
+	//$order_files = array();
+	//$order_files[] = arra$file->filename;
+	//$form['#order']->data['order_upload'] = $order_files;
+	//uc_order_save($form['#order']);
+	$_SESSION['checkout_order_upload_files'][] = array("order_file" =>$file->filename, 'product_nid' => $product_nid, 'product_title' => $product_title);	
+	drupal_set_message(t($file->filename.' File was uploaded successfully'));
+}
+
+function shopping_cart_form_alter(&$form, $form_state, $form_id) {
+	switch($form_id) {
+        case 'uc_cart_view_form' :
+            if($form['checkout']) {
+                $form['checkout']['#submit'][0] = $form['#submit'][0];
+                unset($form['#submit']);
+            }			
+			$form['checkout']['#submit'][0] ='newuc_cart_view_form_submit';			
+        break;
+		case 'uc_product_add_to_cart_form':
+			//print_r($form['attributes']['18']['#title']);
+			foreach($form['attributes'] as $key =>$att) {
+				if($att['#title'] == 'Product') {
+					$form['attributes'][$key]['#attributes'] = array("onchange" => "product_change(this.id)");
+				}
+			}
+			
+            break;
+    }
+	return $form;
+
+}
+
+function shopping_cart_order($op, &$arg1, $arg2) {
+  switch ($op) {
+		case 'save':
+		// Do something to save payment info!	  
+		foreach($_SESSION['checkout_order_upload_files'] as $checkout_order_upload_files) {
+		  //$arg1->data['order_upload'] = $checkout_order_upload_files['order_file'];
+		  db_query("INSERT INTO {order_product_files} (oid, nid, filename, node_title) VALUES(%d, %d, '%s', '%s')", $arg1->order_id, $checkout_order_upload_files['product_nid'], $checkout_order_upload_files['order_file'], $checkout_order_upload_files['product_title']);
+		}
+		break;
+  }
+}
+
+function newuc_cart_view_form_submit($form_id, $form_values) {
+	drupal_goto('checkout-upload-files');
+}
+
+
+function shopping_cart_order_pane() {
+  // Replacement for standard billing address pane.
+  $panes[] = array(
+    'id' => 'order_upload1',
+    'callback' => 'shopping_cart_order_pane_order_files',
+    'title' => t('Proudct Order Files'),
+    'desc' => t('File uploads for products in order.'),    
+    'weight' => -1,
+    'show' => array('view', 'edit', 'customer'),
+  );
+  return $panes;
+}
+
+
+function shopping_cart_order_pane_order_files($op, $order) {
+  switch ($op) {
+    case 'view':
+    case 'customer':
+	  $edit_access = user_access('attach files to orders');
+      
+      $module_path = drupal_get_path('module', 'uc_order_upload');
+      //drupal_add_css($module_path . '/uc_order_upload.css', 'module');
+      
+      $output = '';
+      $rows = array();	  
+	  $sql = db_query("SELECT * FROM {order_product_files} WHERE oid = %d ", $order->order_id);
+	  while($records =db_fetch_object($sql)) {
+		$download_link = '&nbsp;&nbsp; <strong>' . l(t('Download'), 'productorder/' . $order->order_id . '/download/' . md5($records->filename)) . '<strong>';
+         /* $rows[] = array(
+            $records->node_title , $records->filename, $download_link . 
+            (' &nbsp;&nbsp; '. l('Delete', 'productorder_upload/'. $order->order_id .'/delete/'. md5($records->filename)))
+          );*/
+		  $rows[] = array(
+            $records->node_title , $records->filename, $download_link);
+	  }
+          
+      if ($rows) {        
+        $output .= theme('table', array(t('Product Name'), t('File Name'), t('Actions')), $rows);
+      }
+      return $output;
+
+      break;
+  }
+}
+
+
+//Implemention of hook_theme function
+function shopping_cart_theme() {
+	return array (
+		'list_node_image' => array(
+			'arguments' => array('data' => NULL),
+			'template' => 'list-node-image',
+		),
+		'product_template' => array(
+			'arguments' => array('data' => NULL),
+			'template' => 'product-template',
+		),
+		'shipping_time_calculator' => array(
+			'arguments' => array('products' => NULL, 'country' => NULL),
+			'template' => 'shipping-time-calculator',
+		),
+		'place_your_order' => array(
+			'arguments' => array('form' => NULL, 'sell_price' => NULL, 'cost_price' => NULL,'nid' => NULL),
+			'template' => 'place-your-order',
+		),
+		'share_this_product' => array(
+			'arguments' => array('form' => NULL),
+			'template' => 'share-this-product',
+		),
+                'product_slider' => array(
+                        'arguments' => array('data' => NULL),
+                        'template' => 'product-silder',
+                ),		
+		'checkout_upload_files_from' => array(
+			'arguments' => array('form' => NULL),
+			'template' => 'checkout-upload-files',
+		),
+		'custom_twitter_pull_listing' => array(
+		  'arguments' => array('tweets' => NULL, 'twitkey' => NULL, 'title' => NULL),
+		  'template' => 'custom-twitter-pull-listing',
+		),
+		'email_signup' => array(
+		  'arguments' => array('form' => NULL),
+		  'template' => 'email-signup',
+		),
+		
+	);
+}
+
+function barcode_test_form(){
+	$order = 23;
+	$path = variable_get('barcode_default_path', 'barcodes');
+	print("barcode_default_path:".$path);
+	$encoding = variable_get('barcode_encoding', array('UPC-A'));
+	print("barcode_encoding:".$encoding);
+	$filename = file_create_path($path).'/'.$order.$encoding.'.png';
+	print("file:".$filename);
+	if (!file_exists($filename)) {
+		include_once drupal_get_path('module', 'barcode') . '/barcode.inc.php';
+		$bar= new BARCODE();
+		$type = 'png';
+		$bar->setSymblogy($encoding);
+		$bar->setHeight(variable_get('barcode_height', 30));
+		$bar->setScale(variable_get('barcode_scale', 2.0));
+		$bar->setHexColor(variable_get('barcode_bcolor', '#000000'),variable_get('barcode_barcolor', '#FFFFFF'));
+		$bar->setFont(variable_get('barcode_font', drupal_get_path('module', 'barcode') ."/arialbd.ttf"));
+		$bar->genBarCode($order,$type,$filename);
+		print("barcode:".file_create_path($path).'/'.$order.$encoding);
+		drupal_set_message(t('Barcode has been generated, using %encoding.'));
+	}
+}
+
+/**
+ * Function for user prfile 
+*/
+function user_my_profile()
+{
+  global $user;
+  drupal_goto('user/'.$user->uid);
+}
+
+
+/**
+ *
+ *Implementation of hook_user
+ */
+function shopping_cart_user($op, &$edit, &$account, $category = NULL) {
+  switch ($op) {
+    case 'view':
+	unset($account->content['summary']);	
+		$account->content['user_profile_info_section'] = array(
+		  // This outer user_profile_category item defines a "section" for your content
+			
+			'#type' => 'user_profile_item',
+			// Finally, you can add whatever mark-up you need in this element's #value.
+			'#value' => l(t('Edit Profile Details '), 'user/'. $account->uid .'/edit'),
+			'#weight' => -4,
+		 );
+		 $account->content['user_address_info_section'] = array(
+		  // This outer user_profile_category item defines a "section" for your content
+			
+			'#type' => 'user_profile_item',
+			// Finally, you can add whatever mark-up you need in this element's #value.
+			'#value' => l(t('Edit Address Details '), 'user/'. $account->uid .'/addresses'),
+			'#weight' => -3,
+		 );
+        break;
+  }
+}

@@ -1,0 +1,5 @@
+name = UC Remove Button 
+description = Make the UC cart show a remove button instead of a remove checkbox
+dependencies[] = uc_cart
+package = Ubercart - other
+core = 6.x

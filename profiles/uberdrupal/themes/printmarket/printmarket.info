@@ -1,0 +1,40 @@
+name = Print Market
+description = Tableless, recolorable, multi-column, fluid width theme (default).
+version = VERSION
+core = 6.x
+engine = phptemplate
+stylesheets[all][] = css/style.css
+stylesheets[all][] = css/common.css
+stylesheets[all][] = css/default.css
+regions[header] = Header
+regions[sociallinks] = Social Links
+regions[slider] = Slider
+regions[product_body] = Product Title And Body
+regions[product_sku] = Product sku
+regions[product_template] = Product Template
+regions[product_attr] = Product Attribute
+regions[preface_first] = Preface first
+regions[preface_middle] = Preface middle
+regions[preface_last] = Preface last
+regions[preface_right] = Preface Right
+regions[header_top] = Top Header Menu
+regions[footer_menu] = Footer Menu
+regions[newsletters] = News Letters
+regions[twitterhome] = Twitter Pull
+regions[rightsidder] = Right side
+
+
+; Information added by drupal.org packaging script on 2011-05-25
+version = "6.22"
+project = "drupal"
+datestamp = "1306357015"
+
+
+features[] = logo
+features[] = name
+features[] = slogan
+features[] = mission
+features[] = footer_message
+features[] = favicon
+features[] = primary_links
+features[] = secondary_links

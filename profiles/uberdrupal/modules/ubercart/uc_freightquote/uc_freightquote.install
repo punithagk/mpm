@@ -1,0 +1,57 @@
+<?php
+/**
+ * @file Install freightquote module
+ */
+
+/**
+ * Implements hook_install().
+ */
+function uc_freightquote_install() {
+  drupal_install_schema('freightquote');
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function uc_freightquote_uninstall() {
+  drupal_uninstall_schema('freightquote');
+  variable_del('uc_freightquote_username');
+  variable_del('uc_freightquote_password');
+  variable_del('uc_freightquote_HazardousMaterialContactName');
+  variable_del('uc_freightquote_HazardousMaterialContactPhone');
+  variable_del('uc_freightquote_markup');
+  variable_del('uc_freightquote_markup_type');
+}
+
+/**
+ * Implements hook_schema().
+ */
+function uc_freightquote_schema() {
+  $schema['freightquote'] = array(
+    'description' => '',
+    'fields' => array(
+      'vid' => array(
+        'description' => 'Node version id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'nid' => array(
+        'description' => 'Node ID',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'info' => array(
+        'description' => 'Store freightquote settings per product',
+        'type' => 'text',
+        'size' => 'medium',
+      ),
+    ),
+    'primary key' => array('vid'),
+  );
+
+  return $schema;
+}

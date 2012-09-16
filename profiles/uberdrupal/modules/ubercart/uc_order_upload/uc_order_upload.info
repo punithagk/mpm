@@ -1,0 +1,11 @@
+name = Ubercart order file upload
+description = Ubercart support for order file attachments
+dependencies[] = uc_order
+package = Ubercart - extra
+core = 6.x
+; Information added by drupal.org packaging script on 2011-10-20
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "uc_order_upload"
+datestamp = "1319071263"
+

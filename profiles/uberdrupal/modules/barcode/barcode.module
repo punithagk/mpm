@@ -1,0 +1,349 @@
+<?php
+
+// $Id: barcode.module,v 1.1.2.4 2010/03/09 17:20:46 skyredwang Exp $
+
+
+/**
+ * Implementation of hook_theme().
+ */
+function barcode_theme() {
+  return array(
+    'barcode_formatter_plain' => array(
+      'arguments' => array('element' => NULL),
+    ),
+    'barcode_formatter_default' => array(
+      'arguments' => array('element' => NULL),
+    ),
+    'barcode_textfield' => array(
+      'arguments' => array('element' => NULL),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_field_info().
+ */
+function barcode_field_info() {
+  return array(
+    'barcode' => array(
+      'label' => 'Bar Code',
+      'callbacks' => array(
+        'tables' => CONTENT_CALLBACK_DEFAULT,
+        'arguments' => CONTENT_CALLBACK_DEFAULT,
+      ),
+    ),
+  );
+}
+
+
+/**
+ * Implementation of hook_field_settings().
+ */
+function barcode_field_settings($op, $field) {
+  switch ($op) {
+    case 'form':
+      $form = array(
+        '#theme' => 'barcode_field_settings',
+      );
+
+      $title_options = array(
+        'optional' => t('Optional Title'),
+        'required' => t('Required Title'),
+        'none' => t('No Title'),
+      );
+
+      $form['title'] = array(
+        '#type' => 'radios',
+        '#title' => t('Bar Code Title'),
+        '#default_value' => isset($field['title']) ? $field['title'] : 'optional',
+        '#options' => $title_options,
+        '#description' => t('If the barcode title is optional or required, a field will be displayed to the end user.'),
+      );
+      return $form;
+
+    case 'save':
+      return array('title','title_value');
+
+    case 'database columns':
+      return array(
+        'barcode' => array('type' => 'varchar', 'length' => 20, 'not null' => FALSE, 'sortable' => TRUE),
+        'title' => array('type' => 'varchar', 'length' => 20, 'not null' => FALSE, 'sortable' => TRUE),
+      );
+
+    //Todo develop Views2 support
+  }
+}
+
+/**
+ * Implementation of hook_field().
+ */
+function barcode_field($op, &$node, $field, &$items, $teaser, $page) {
+  switch ($op) {
+    case 'validate': // validate the entered data according to the encoding method.
+      $encoding = variable_get('barcode_encoding', array('UPC-A'));
+      foreach ($items as $delta => $item) {
+        if ($encoding == 'UPC-A'){ //UPC-A length validation
+          $len = strlen(trim(check_plain($item['barcode'])));
+          if ($len!=0 && strlen(trim(check_plain($item['title'])))!=0) { // If a bacode is entered.
+            if ($len!=12) {
+              form_set_error($field['field_name'] .']['.($delta).'][barcode',t('UPC-A code must have 12 digits! Check your #'.($delta+1) . ' entry. Length: '.$len));
+            }
+          }
+        }
+      }
+      break;
+    case 'sanitize':
+      foreach ($items as $delta => $item) {
+        $items[$delta]['barcode'] = trim(check_plain($item['barcode']));
+        $items[$delta]['title'] = trim(check_plain($item['title']));
+      }
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_content_is_empty().
+ */
+function barcode_content_is_empty($item, $field) {
+  if (empty($item['barcode'])) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Implementation of hook_field_formatter_info().
+ *
+ */
+function barcode_field_formatter_info() {
+  $formats = array(
+    'default' => array(
+      'label' => t('Barcode Image'),
+      'field types' => array('barcode','title'),
+      'multiple values' => CONTENT_HANDLE_CORE,
+    ),
+    'plain' => array(
+      'label' => t('Barcode Text'),
+      'field types' => array('barcode','title'),
+      'multiple values' => CONTENT_HANDLE_CORE,
+    ),
+  );
+  return $formats;
+}
+
+/**
+ * Theme function for 'plain' barcode field formatter.
+ */
+function theme_barcode_formatter_plain($element) {
+  if (!empty($element['#item']['title'])){
+        return $element['#item']['title'].': '.$element['#item']['barcode'];
+     }else return $element['#item']['barcode'];
+}
+
+/**
+ * Theme function for 'default' barcode field formatter.
+ */
+function theme_barcode_formatter_default($element) {
+  if(!empty($element['#item']['barcode'])){
+     // First to check if the images has been generated from preview request
+     $path = variable_get('barcode_default_path', 'barcodes');
+     $encoding = variable_get('barcode_encoding', array('UPC-A'));
+     $filename = file_create_path($path).'/'.$element['#item']['barcode'].$encoding.'.png';
+     watchdog("Test",$filename);
+     if (!file_exists($filename)) {
+        include_once drupal_get_path('module', 'barcode') . '/barcode.inc.php';
+        $bar= new BARCODE();
+        $type = 'png';
+        $bar->setSymblogy($encoding);
+        $bar->setHeight(variable_get('barcode_height', 30));
+        $bar->setScale(variable_get('barcode_scale', 2.0));
+        $bar->setHexColor(variable_get('barcode_bcolor', '#000000'),variable_get('barcode_barcolor', '#FFFFFF'));
+        $bar->setFont(variable_get('barcode_font', drupal_get_path('module', 'barcode') ."/arialbd.ttf"));
+        $bar->genBarCode($element['#item']['barcode'],$type,file_create_path($path).'/'.$element['#item']['barcode'].$encoding);
+	watchdog("Test",print_r($bar));
+        drupal_set_message(t('The barcode image for %barcode has been generated, using %encoding.', array('%barcode'=>$element['#item']['barcode'],'%encoding'=>$encoding)));
+     }
+     $path = variable_get('barcode_default_path', 'barcodes');
+     if (!empty($element['#item']['title'])){
+        return '<img src="/'.$filename.'" alt="'.$element['#item']['barcode'].'" /> -- '.$element['#item']['title'];
+     }else return '<img src="/'.$filename.'" alt="'.$element['#item']['barcode'].'" />';
+  }else return '';
+}
+
+/**
+ * Implementation of hook_widget_info().
+ */
+function barcode_widget_info() {
+  return array(
+    'barcode_textfield' => array(
+      'label' => t('Text field'),
+      'field types' => array('barcode'),
+      'multiple values' => CONTENT_HANDLE_CORE,
+      'callbacks' => array(
+        'default value' => CONTENT_CALLBACK_DEFAULT,
+      ),
+    ),
+  );
+}
+
+/**
+ * Implementation of FAPI hook_elements().
+ */
+function barcode_elements() {
+  return array(
+    'barcode_textfield' => array(
+      '#input' => TRUE,
+      '#columns' => array('barcode','title'),
+      //'#delta' => 0,
+      '#process' => array('barcode_process'),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_widget().
+ */
+function barcode_widget(&$form, &$form_state, $field, $items, $delta = 0) {
+  $element = array(
+    '#type' => $field['widget']['type'],
+    '#default_value' => isset($items[$delta]) ? $items[$delta] : '',
+  );
+  return $element;
+}
+
+/**
+ * Process an individual element.
+ */
+function barcode_process($element, $edit, $form_state, $form) {
+  $field = $form['#field_info'][$element['#field_name']];
+  $field_key = $element['#columns'][0]; //here $field_key is barcode
+  $delta = $element['#delta'];
+  $element[$field_key] = array(
+    '#type' => 'textfield',
+    '#maxlength' => '20',
+    '#size' => '20',
+    '#title' => t($field['widget']['label']),
+    '#description' => t($field['widget']['description']),
+    '#required' => $element['#required'],
+    '#default_value' => isset($element['#value'][$field_key]) ? $element['#value'][$field_key] : NULL,
+  );
+  if ($field['title'] != 'none' && $field['title'] != 'value') {
+     $element['title'] = array(
+       '#type' => 'textfield',
+       '#maxlength' => '20',
+       '#size' => '20',
+       '#title' => t('Title'),
+       '#required' => ($field['title'] == 'required' && !empty($element['#value'][$field_key])) ? TRUE : FALSE,
+       '#default_value' => isset($element['#value']['title']) ? $element['#value']['title'] : NULL,
+     );
+   }
+  return $element;
+}
+
+/**
+ * FAPI theme for an individual text elements.
+ */
+function theme_barcode_textfield($element) {
+  drupal_add_css(drupal_get_path('module', 'barcode') .'/barcode.css');
+  // Prefix single value barcode fields with the name of the field.
+  if (empty($element['#field']['multiple'])) {
+    if (isset($element['barcode']) && isset($element['title'])) {
+      $element['barcode']['#title'] = $element['#title'] .' '. $element['barcode']['#title'];
+      $element['title']['#title'] = $element['#title'] .' '. $element['title']['#title'];
+    }
+    elseif($element['barcode']) {
+      $element['barcode']['#title'] = $element['#title'];
+    }
+  }
+  $output = '';
+  $output .= '<div class="barcode-field-subrow clear-block">';
+  if (isset($element['title'])) {
+    $output .= '<div class="barcode-field-title barcode-field-column">' . theme('textfield', $element['title']) . '</div>';
+  }
+  $output .= '<div class="barcode-field-url' . (isset($element['title']) ? ' barcode-field-column' : '') . '">' . theme('textfield', $element['barcode']) . '</div>';
+  $output .= '</div>';
+  return $output;
+}
+
+/**
+  * Implementation of hook_menu()
+  * Configuration
+  */
+function barcode_menu() {
+  $items['admin/content/barcode'] = array(
+    'title' => t('Bar Code'),
+    'description' => t('Barcode Module Configuration'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('barcode_settings'),
+    'access arguments' => array('administer barcode module'),
+  );
+  return $items;
+}
+
+/**
+  * Menu callback to configure barcode module settings.
+  */
+function barcode_settings(){
+  $form['barcode_encoding'] = array(
+        '#type' => 'select',
+        '#title' => t('Encoding Method'),
+        '#default_value' => variable_get('barcode_encoding', array('EAN-13')),
+        '#multiple' => FALSE,
+        '#options' => array(
+                'UPC-A'=>t('UPC-A'),
+                'EAN-13'=>t('EAN-13'),
+                'EAN-8'=>t('EAN-8'),
+                'UPC-E'=>t('UPC-E'),
+                'S205'=>t('S205'),
+                'I2O5'=>t('I2O5'),
+                'I25'=>t('I25'),
+                'POSTNET'=>t('POSTNET'),
+                'CODABAR'=>t('CODABAR'),
+                'CODE128'=>t('CODE128'),
+                'CODE39'=>t('CODE39'),
+                'CODE93'=>t('CODE93'),
+        ),
+        '#required' => TRUE,
+      );
+  $form['barcode_height'] = array(
+    '#title' => t('Height'),
+    '#description' => t('Integer! in order to scan the printed barcode, the suggested height is 30'),
+    '#type' => 'textfield',
+    '#default_value' => variable_get('barcode_height', 30),
+    '#size' => 2,
+    '#required' => TRUE,
+  );
+  $form['barcode_scale'] = array(
+    '#title' => t('Scale'),
+    '#description' => t('Float! in order to scan the printed barcode, the suggested height is 2.0'),
+    '#type' => 'textfield',
+    '#default_value' => variable_get('barcode_scale', 2.0),
+    '#size' => 2,
+    '#required' => TRUE,
+  );
+  $form['barcode_bcolor'] = array(
+    '#title' => t('Background Color'),
+    '#description' => t('Hex value'),
+    '#type' => 'textfield',
+    '#default_value' => variable_get('barcode_bcolor', '#000000'),
+    '#size' => 8,
+    '#required' => TRUE,
+  );
+  $form['barcode_barcolor'] = array(
+    '#title' => t('Bar Color'),
+    '#description' => t('Hex value'),
+    '#type' => 'textfield',
+    '#default_value' => variable_get('barcode_barcolor', '#FFFFFF'),
+    '#size' => 8,
+    '#required' => TRUE,
+  );
+  $form['barcode_font'] = array(
+    '#title' => t('Font File'),
+    '#description' => t('the relative path to Drupal\'s base'),
+    '#type' => 'textfield',
+    '#default_value' => variable_get('barcode_font', drupal_get_path('module', 'barcode') ."/arialbd.ttf"),
+    '#size' => 60,
+    '#required' => TRUE,
+  );
+  return system_settings_form($form);
+}

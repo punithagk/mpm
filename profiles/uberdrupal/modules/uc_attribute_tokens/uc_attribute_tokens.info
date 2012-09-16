@@ -1,0 +1,16 @@
+; $Id: uc_attribute_tokens.info,v 1.1 2010/01/08 04:35:31 tr Exp $
+name = Attribute Tokens
+description = Creates tokens for product attributes
+dependencies[] = uc_attribute
+dependencies[] = token
+package = Ubercart - extra
+
+core = 6.x
+php = 5.0
+
+; Information added by drupal.org packaging script on 2011-02-17
+version = "6.x-1.0"
+core = "6.x"
+project = "uc_attribute_tokens"
+datestamp = "1297907826"
+

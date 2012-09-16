@@ -1,0 +1,264 @@
+<?php
+/**
+ * @file FreightQuote module.
+ */
+
+/**
+ * FreightQuote API
+ * - WSDL:
+ *    https://b2b.freightquote.com/WebService/QuoteService.asmx?wsdl
+ * - Web service request (XML Request via POST)
+ *    https://b2b.Freightquote.com/WebService/QuoteService.asmx
+ * - Test account: xmltest@freightquote.com / pass: XML
+ */
+
+/**
+ * FQ service URL.
+ */
+define('FREIGHTQUOTE_SERVICE_URL', 'https://b2b.freightquote.com/WebService/QuoteService.asmx');
+
+/**
+ * Implements hook_menu()
+ */
+function uc_freightquote_menu() {
+  $items['freightquote'] = array(
+    'title' => 'Freightquote WSDL',
+    'access arguments' => array('administer store'),
+    'file' => 'freightquote.pages.inc',
+    'page callback' => 'uc_freightquote_wsdl_page_callback',
+  );
+
+  $items['admin/store/settings/quotes/methods/freightquote'] = array(
+    'title' => 'FreightQuote',
+    'access arguments' => array('administer store'),
+    'file' => 'freightquote.pages.inc',
+    'page callback' => 'uc_freightquote_settings_form_page_callback',
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function uc_freightquote_form_alter(&$form, $form_state, $form_id) {
+  if (!uc_product_is_product_form($form)) {
+    return;
+  }
+
+  $node = &$form['#node'];
+
+  $form['shipping']['freightquote'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Freightquote',
+    '#collapsible' => TRUE,
+    '#tree' => TRUE,
+  );
+  
+  $form['shipping']['freightquote']['class'] = array(
+    '#type' => 'select',
+    '#title' => t('Class'),
+    '#options' => uc_freightquote_classes(),
+    '#default_value' => isset($node->freightquote['class']) ? $node->freightquote['class'] : NULL,
+    '#description' => 'Freight class is recommended for the most accurate rate.
+        If you don\'t know the class of the freight, please call customer service
+        at 800.323.5441',
+  );
+
+  $form['shipping']['freightquote']['package_type'] = array(
+    '#type' => 'select',
+    '#title' => t('Package type'),
+    '#options' => uc_freightquote_package_types(),
+    '#default_value' => isset($node->freightquote['package_type']) ? $node->freightquote['package_type'] : NULL,
+  );
+  
+  $form['shipping']['freightquote']['commodity_type'] = array(
+    '#type' => 'select',
+    '#title' => t('Commodity Type'),
+    '#options' => uc_freightquote_commodity_types(),
+    '#default_value' => isset($node->freightquote['commodity_type']) ? $node->freightquote['commodity_type'] : NULL,
+  );
+
+  $form['shipping']['freightquote']['content_type'] = array(
+    '#type' => 'select',
+    '#title' => t('Content Type'),
+    '#options' => uc_freightquote_content_types(),
+    '#default_value' => isset($node->freightquote['content_type']) ? $node->freightquote['content_type'] : NULL,
+  );
+}
+
+/**
+ * Implements ook_nodeapi().
+ */
+function uc_freightquote_nodeapi(&$node, $op) {
+  if (uc_product_is_product($node->type)) {
+    switch ($op) {
+      case 'insert':
+      case 'update':
+        if (isset($node->freightquote)) {
+          $info = $node->freightquote;
+          if (!$node->revision) {
+            db_query("DELETE FROM {freightquote} WHERE vid = %d", $node->vid);
+          }
+
+          $sql = "INSERT INTO {freightquote} (vid, nid, info) VALUES (%d, %d, '%s')";
+          db_query($sql, $node->vid, $node->nid, serialize($info));
+        }
+        break;
+      case 'load':
+        $sql = "SELECT * FROM {freightquote} WHERE vid = %d";
+        $record = db_fetch_array(db_query($sql, $node->vid));
+        if (!empty($record)) {
+          $record['info'] = unserialize($record['info']);
+          return array('freightquote' => $record['info']);
+        }
+        break;
+      case 'delete':
+        $sql = "DELETE FROM {freightquote} WHERE nid = %d";
+        db_query($sql, $node->nid);
+        break;
+      case 'delete revision':
+        $sql = "DELETE FROM {freightquote} WHERE vid = %d";
+        db_query($sql, $node->vid);
+        break;
+    }
+  }
+}
+
+/**
+ * Implements hook_shipping_method().
+ * 
+ * @see http://www.ubercart.org/docs/api/hook_shipping_method
+ * @see uc_weightquote_shipping_method()
+ */
+function uc_freightquote_shipping_method() {
+  $methods['freightquote'] = array(
+    'id' => 'freightquote',
+    'module' => 'freightquote',
+    'title' => t('FreightQuote'),
+    'enabled' => variable_get('uc_freightquote_enabled', TRUE),
+    'quote' => array(
+      'type' => 'order',
+      'callback' => 'uc_freightquote_get_quote',
+      'accessorials' => isset($_SESSION['uc_freightquote_accessorials']) ? $_SESSION['uc_freightquote_accessorials'] : array()
+    ),
+  );
+
+  return $methods;
+}
+
+/**
+ * Implements hook_ca_predicate().
+ * 
+ * @see uc_quote_action_get_quote()
+ * @see uc_weightquote_shipping_method() -- example
+ */
+function uc_freightquote_ca_predicate() {
+  $title = 'Shipping quote via @method';
+  $title = t($title, array('@method' => t('Freightquote')));
+
+  $predicates['freightquote'] = array(
+    '#title' => $title,
+    '#trigger' => 'get_quote_from_freightquote',
+    '#class' => 'freightquote',
+    '#status' => variable_get('uc_freightquote_enabled', TRUE),
+    '#actions' => array(
+      array(
+        '#name' => 'uc_quote_action_get_quote',
+        '#title' => t('Fetch a shipping quote from Freightquote service.'),
+        '#argument_map' => array(
+          'order' => 'order',
+          'method' => 'method',
+        ),
+      )
+    ),
+  );
+
+  return $predicates;
+}
+
+/**
+ * Callback to get quote from Freightquote service.
+ * 
+ * @param type $products
+ * @param type $location_destination
+ * @param type $method
+ * @return type 
+ */
+function uc_freightquote_get_quote($products, $location_destination, $method) {
+  if ($method['enabled']) {
+    $location_origin = variable_get('uc_quote_store_default_address', new stdClass());
+
+    # old way
+    # module_load_include('inc', 'freightquote');
+    # return uc_freightquote_quote($location_origin, $location_destination, $products);
+
+    # better quote
+    module_load_include('packing.inc', 'freightquote');
+    return uc_freightquote_better_quote($location_origin, $location_destination, $products);
+  }
+}
+
+/**
+ * Supported freight classes.
+ * 
+ * Note from freightquote:
+ *  Freight class is recommended for the most accurate rate. If you don't know
+ *  the class of the freight, please call customer service at 800.323.5441
+ */
+function uc_freightquote_classes() {
+  $keys = array(50, 55, 60, 65, 70, 77.5, 85, 92.5, 100, 110, 125, 150, 175, 200, 250, 300, 400, 500);
+  foreach ($keys as $key) {
+    $classes[$key] = $key;
+  }
+  return $classes;
+}
+
+/**
+ * Supported package types.
+ *
+ * Freightquote_API_Programmers_Reference.pdf > Appendix C
+ */
+function uc_freightquote_package_types() {
+  $keys = array(
+    'Unknown', # < FQuote does not return any value
+    'Pallets_48x40', 'Pallets_other', 'Bags', 'Bales', 'Boxes',
+    'Bundles', 'Carpets', 'Coils', 'Crates', 'Cylinders', 'Drums', 'Pails',
+    'Reels', 'Rolls', 'TubesPipes', 'Motorcycle', 'ATV', 'Pallets_120x120',
+    'Pallets_120x100', 'Pallets_120x80', 'Pallets_europe', 'Pallets_48x48',
+    'Pallets_60x48', 'Slipsheets', 'Unit',
+  );
+
+  foreach ($keys as $key) {
+    $types[$key] = $key;
+  }
+
+  return $types;
+}
+
+function uc_freightquote_commodity_types() {
+  $keys = array('GeneralMerchandise', 'Machinery', 'HouseholdGoods',
+    'FragileGoods', 'ComputerHardware', 'BottledProducts', 'BottleBeverages',
+    'NonPerishableFood', 'SteelSheet', 'BrandedGoods', 'PrecisionInstruments',
+    'ChemicalsHazardous', 'FineArt', 'Automobiles', 'CellPhones', 'NewMachinery',
+    'UsedMachinery', 'HotTubs');
+  
+  foreach ($keys as $key) {
+    $types[$key] = $key;
+  }
+
+  return $types;
+}
+
+function uc_freightquote_content_types() {
+  $keys = array('NewCommercialGoods', 'UsedCommercialGoods', 'HouseholdGoods', 'FragileGoods', 'Automobile', 'Motorcycle', 'AutoOrMotorcycle');
+  foreach ($keys as $key) {
+    $types[$key] = $key;
+  }
+  return $types;
+}
+
+function uc_freightquote_notification_methods() {
+  return array('None', 'Fax', 'Email');
+}

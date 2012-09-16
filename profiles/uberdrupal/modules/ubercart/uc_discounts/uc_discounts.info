@@ -1,0 +1,14 @@
+name = Discounts
+description = Define discounts which are automatically applied to orders and products.
+dependencies[] = uc_store
+dependencies[] = uc_product
+dependencies[] = uc_order
+package = Ubercart - discounts
+core = 6.x
+
+; Information added by drupal.org packaging script on 2011-02-25
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "uc_discounts"
+datestamp = "1298620487"
+

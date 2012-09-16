@@ -1,0 +1,1054 @@
+<?php
+
+/**
+ * @file
+ * Allows discounts to products and orders based on various criteria.
+ *
+ * Developed by Marshal Newrock (http://idealso.com/ | marshal@idealso.com)
+ */
+
+/**
+ * Yes/No constants. Allows to easily change the case later.
+ */
+define('UC_DISCOUNTS_YES', t('yes'));
+define('UC_DISCOUNTS_NO', t('no'));
+
+/*******************************************************************************
+ * Hook Functions (Drupal)
+ ******************************************************************************/
+
+/**
+ * Implementation of hook_perm().
+ */
+function uc_discounts_perm() {
+  return array('administer discounts');
+}
+
+/**
+ * Implementation of hook_theme().
+ **/ 
+function uc_discounts_theme() {
+  return array(
+    'uc_discounts_list' => array(
+      'arguments' => array('form' => NULL),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_menu()
+ **/
+function uc_discounts_menu() {
+  $items = array();
+  $items['admin/store/discounts'] = array(
+    'title' => 'Discounts',
+    'description' => 'Administer discounts',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer discounts'),
+    'page callback' => 'uc_discounts_show_discounts',
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'uc_discounts_admin.inc'
+  );
+  $items['admin/store/discounts/manage'] = array(
+    'title' => 'Manage',
+    'description' => 'Manage discounts',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer discounts'),
+    'page callback' => 'uc_discounts_show_discounts',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => 0,
+    'file' => 'uc_discounts_admin.inc'
+  );
+  $items['admin/store/discounts/add'] = array(
+    'title' => 'Add Discount',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer discounts'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_discounts_discount_form'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 1,
+    'file' => 'uc_discounts_admin.inc'
+  );
+  $items['admin/store/discounts/settings'] = array(
+    'title' => 'Settings',
+    'description' => 'Discount settings',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer discounts'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_discounts_admin_settings'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 2,
+    'file' => 'uc_discounts_admin.inc'
+  );
+  $items['admin/store/discounts/%'] = array(
+    'title' => 'View discount',
+    'page callback' => 'uc_discounts_discount_view',
+    'page arguments' =>  array(3, 'view'),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer discounts'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_discounts_admin.inc'
+  );
+  $items['admin/store/discounts/%/view'] = array(
+    'title' => 'View',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+    'file' => 'uc_discounts_admin.inc'
+  );
+  $items['admin/store/discounts/%/edit'] = array(
+    'title' => 'edit',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_discounts_discount_form', 3),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer discounts'),
+    'weight' => 1,
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'uc_discounts_admin.inc'
+  );
+  $items['admin/store/discounts/%/delete'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_discounts_discount_delete_form', 3),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer discounts'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_discounts_admin.inc'
+  );
+  // Condition setup
+  $items['admin/store/discounts/%/conditions/add'] = array(
+    'description' => check_plain($discount->name),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_discounts_condition_form', 3),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer discounts'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_discounts_admin.inc'
+  );
+  $items['admin/store/discounts/%/conditions/%/delete'] = array(
+    'page callback' => 'uc_discounts_condition_delete',
+    'page arguments' => array(3, 5),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer discounts'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_discounts_admin.inc'
+  );
+  $items['admin/store/discounts/%/conditions/%'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_discounts_condition_form', 3, 5),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer discounts'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_discounts_admin.inc'
+  );
+  // Actions
+  $items["admin/store/discounts/%/actions/add"] = array(
+    'description' => check_plain($discount->name),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_discounts_action_form', 3),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer discounts'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_discounts_admin.inc'
+  );
+  $items['admin/store/discounts/%/actions/%'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_discounts_action_form', 3, 5),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer discounts'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_discounts_admin.inc'
+  );
+  $items['admin/store/discounts/%/actions/%/delete'] = array(
+    'page callback' => 'uc_discounts_action_delete',
+    'page arguments' => array(3, 5),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer discounts'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_discounts_admin.inc'
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function uc_discounts_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  $product_types = uc_product_node_info();
+  if (isset($product_types[$node->type])) {
+    switch ($op) {
+      case 'load':
+      	if(variable_get('uc_discounts_product_discount_price', false)) {
+	        $discounts = uc_discounts_product_discount_price($node);
+	        return array('discounts' => $discounts);
+        }
+      case 'view':
+        // Get discounts descriptions informations
+        $default_enabled_value = variable_get('uc_product_field_enabled', array('discounts' => 'discounts'));
+        $default_weight_value = variable_get('uc_product_field_weight', array('discounts' => -2));
+        
+        // If enabled, display them into the node
+        if($default_enabled_value == false) {
+	        $output = '<div class="discounts">';
+	        $discounts_descriptions = array();
+	        foreach($node->discounts as $discount) {
+	          $discounts_descriptions[] = t($discount['description']);
+	        }
+	        $output .= theme_item_list($discounts_descriptions);
+	        $output .= '</div>';				
+	
+	        $node->content['discounts'] = array(
+	          '#value' => $output,
+	          '#access' => $default_enabled_value['discounts'],
+	          '#weight' => $default_weight_value['discounts'],
+	        );        	
+        }
+
+        // Alter the node display price
+        if (variable_get('uc_discounts_product_discount_price', 0)) {
+          $discounts_amount = 0;
+
+          foreach($node->discounts as $discount) {
+            $discounts_amount += $discount['amount'];
+          }
+          $discounted_price = $node->sell_price - $discounts_amount;
+          $node->content['display_price']['#value'] = theme('uc_product_display_price', $discounted_price);
+          $node->content['sell_price']['#value'] = theme('uc_discounts_sell_price', $node->sell_price, $discounted_price);
+        }
+        break;
+    }
+  }
+}
+
+/**
+ * Implementation of hook_form_alter()
+ **/
+function uc_discounts_form_alter(&$form, $form_state, $form_id) {
+  if($form_id == 'uc_product_field_settings_form') {
+    $default_enabled_value = variable_get('uc_product_field_enabled', array(
+      'model' => 'model',
+      'image' => 'image',
+      'display_price' => 'display_price',
+      'sell_price' => 'sell_price',
+      'add_to_cart' => 'add_to_cart',
+      'discounts' => 'discounts',
+    ));
+    $default_weight_value = variable_get('uc_product_field_weight', array(
+      'image' => -2,
+      'display_price' => -1,
+      'discounts' => -1,
+      'model' => 0,
+      'list_price' => 2,
+      'cost' => 3,
+      'sell_price' => 4,
+      'weight' => 5,
+      'dimensions' => 6,
+      'add_to_cart' => 10,
+    ));
+    $form['fields']['discounts']['title'] = array(
+      '#type' => 'markup',
+      '#value' => t('Discounts description'),
+    );
+    $form['fields']['discounts']['enabled'] = array(
+      '#type' => 'checkbox',
+      '#default_value' => $default_enabled_value['discounts'],
+    );
+    $form['fields']['discounts']['weight'] = array(
+      '#type' => 'weight',
+      '#delta' => 10,
+      '#default_value' => $default_weight_value['discounts'],
+    );
+  }
+}
+
+
+/**
+ * Format the selling price conditionally including the discounted price.
+ *
+ * @param $price
+ *   The original price amount.
+ * @param $discount_price
+ *   The discounted price amount.
+ * @param $teaser
+ *   Whether viewing a teaser or not.
+ * @ingroup themeable
+ */
+function theme_uc_discounts_sell_price($price, $discount_price, $teaser) {
+  if ($discount_price != $price && variable_get('uc_discounts_product_full_price', 0)) {
+    $discount_price = uc_currency_format($discount_price);
+    $price = uc_currency_format($price);
+    if ($teaser) {
+      $output = '<span class="sell_price">';
+      $output .= t('!discount (discounted from !price)', array('!discount' => $discount_price, '!price' => $price));
+      $output .= '</span>';
+    }
+    else {
+      $output = '<div class="sell_price">';
+      $output .= t('Price: !discount (discounted from !price)', array('!discount' => $discount_price, '!price' => $price));
+      $output .= '</div>';
+    }
+  }
+  else {
+    $output = theme('uc_product_sell_price', $discount_price, $teaser);
+  }
+  return $output;
+}
+
+/*******************************************************************************
+ * Hook Functions (Ubercart)
+ ******************************************************************************/
+
+/**
+ * Implementation of hook_cart_item()
+ */
+function uc_discounts_cart_item($op, &$item) {
+  switch ($op) {
+    case 'load':
+      if (variable_get('uc_discounts_apply_stage', 'order') == 'cart') {
+        $node = node_load($item->nid);
+        $discounts_amount = 0;
+        foreach($node->discounts as $discount) {
+          $discounts_amount += $discount['amount'];
+        }
+        $item->price = $item->price - $discounts_amount;
+      }
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_line_item()
+ */
+function uc_discounts_line_item() {
+  $items[] = array(
+    'id' => 'discounts',
+    'title' => t('Discounts'),
+    'callback' => 'uc_discounts_line_item_calc',
+    'weight' => -1,
+    'stored' => TRUE,
+    'calculated' => TRUE,
+    'display_only' => FALSE,
+  );
+  return $items;
+}
+
+function uc_discounts_line_item_calc($op, $arg1) {
+  $lines = array();
+
+  if (variable_get('uc_discounts_apply_stage', 'order')!='order') {
+    return;
+  }
+
+  switch ($op) {
+    case 'load':
+    case 'display':
+      $apply_discounts = uc_discounts_apply_discounts();
+      if (empty($apply_discounts)) {
+        return $lines;
+      }
+      $discount_total = 0;
+      foreach ($apply_discounts as $discount) {
+        $discount_total -= $discount['amount'];
+      }
+
+      $lines[] = array(
+        'id' => 'discounts',
+        'title' => t('Discounts'),
+        'amount' => $discount_total,
+      );
+      return $lines;
+      break;
+
+    case 'cart-preview':
+      $apply_discounts = uc_discounts_apply_discounts();
+      if (empty($apply_discounts)) {
+        return $lines;
+      }
+      $discount_total = 0;
+      foreach ($apply_discounts as $discount) {
+        $discount_total -= $discount['amount'];
+      }
+
+      $script = "set_line_item('discounts', '". t('Discounts') ."', $discount_total, -1)";
+      drupal_add_js('$(document).ready( function() { 
+        '. $script .' 
+        if (window.getTax) {
+          getTax();
+        }
+        else if (window.render_line_items) {
+          render_line_items();
+        }
+      });', 'inline');
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_checkout_pane
+ */
+function uc_discounts_checkout_pane() {
+  if (variable_get('uc_discounts_apply_stage', 'order') == 'order') {
+    $panes[] = array(
+      'id' => 'discounts',
+      'title' => t('Discounts'),
+      'desc' => t('Show discounts for the order'),
+      'callback' => 'uc_checkout_pane_discounts',
+      'weight' => 1.5,
+    );
+    return $panes;
+  }
+  return array();
+}
+
+/**
+ * Add the discount pane to the checkout screen
+ */
+function uc_checkout_pane_discounts($op, &$arg1, $arg2) {
+  // get discounts to apply to this order
+
+  switch ($op) {
+    case 'view':
+      // there is no order at this time.  just display discounts
+      $apply_discounts = uc_discounts_apply_discounts();
+      if (empty($apply_discounts)) {
+        return;
+      }
+
+      $description = t('The following discounts will be applied to your order:');
+
+      // create discounts table
+      $header = array(
+        t('Discount'),
+        array('data' => t('Amount'), 'class' => 'text-right'),
+      );
+
+      $rows = array();
+      $discount_total = 0;
+      foreach ($apply_discounts as $discount) {
+        if ($discount['amount'] > 0) {
+          $rows[] = array(
+            $discount['description'],
+            array('data' => uc_currency_format($discount['amount']), 'class' => 'text-right'),
+          );
+          $discount_total += $discount['amount'];
+        }
+      }
+
+      $rows[] = array(
+        '',
+        array(
+          'data' => '<strong>'. t('Subtotal') .':</strong> '. uc_currency_format($discount_total),
+          'colspan' => 2,
+          'class' => 'text-right',
+        ),
+      );
+      $table = theme('table', $header, $rows);
+
+      $contents['discounts'] = array(
+      	'#type' => 'hidden', 
+      	'#value' => $discount_total,
+      	'#suffix' => $table, 
+    	);
+      return array('description' => $description, 'contents' => $contents, 'next-button' => FALSE);
+      
+		case 'process':
+		   db_query("DELETE FROM {uc_order_line_items} WHERE order_id = %d AND type='discounts'", $arg1->order_id);
+
+      //Avoid the use of cart object when admin modifies an order.
+      $apply_discounts = uc_discounts_apply_discounts($arg1->products);
+      if (empty($apply_discounts)) {
+        return;
+      }
+      $discount_total = 0;
+      foreach ($apply_discounts as $discount) {
+        // store as negative
+        $discount_total -= $discount['amount'];
+        uc_order_line_item_add($arg1->order_id, 'discounts', $discount['description'], -$discount['amount'], 1);
+      }
+		break;
+    case 'review':
+      // clear any existing line items
+      $apply_discounts = uc_discounts_apply_discounts();
+      if (empty($apply_discounts)) {
+        return;
+      }
+      $discount_total = 0;
+      $output = '<table>';
+      foreach ($apply_discounts as $discount) {
+        $output .= '<tr>';
+        $output .= '<td>'. $discount['description'] .'</td>';
+        $output .= '<td class="text-right">'. uc_currency_format($discount['amount']) .'</td>';
+        $output .= '</tr>';
+        // store as negative
+        $discount_total -= $discount['amount'];
+      }
+      $output .= '</table>';
+      $review[] = $output;
+
+      return $review;
+  }
+}
+
+/**
+ * Implementation of hook_order
+ */
+function uc_discounts_order($op, &$arg1, $arg2) {
+  if (variable_get('uc_discounts_apply_stage', 'order')!='order') {
+    return;
+  }
+
+  switch ($op) {
+    // DELETE
+
+    case 'delete':
+      db_query("DELETE FROM {uc_order_line_items} WHERE order_id=%d AND type='discounts'", $arg1->order_id);
+      break;
+  }
+}
+
+/*******************************************************************************
+ * Callback Functions, Forms, and Tables
+ ******************************************************************************/
+
+/**
+ * Check order against all active discounts
+ */
+function uc_discounts_apply_discounts($products = NULL) {
+  // cache discounts.  return if already set
+  static $apply_discounts = NULL;
+  if ($apply_discounts !== NULL) {
+    return $apply_discounts;
+  }
+  //Avoid the use of cart object when admin modifies an order.
+  if (!isset($products)) {
+    $cart = uc_cart_get_contents();
+  }
+  else {
+    $cart = $products;
+  }
+  $cart_copy = array();
+  foreach ($cart as $cart_item) {
+    $cart_copy[] = drupal_clone($cart_item);
+  }
+
+  // get and store total price
+  $total_price = 0;
+  foreach ($cart_copy as $product) {
+    $n = node_load($product->nid);
+    $product->type = $n->type;
+    $total_price += $product->price * $product->qty;
+  }
+
+  // check against order discounts
+  $apply_discounts = array();
+  $discount_list = uc_discounts_get_discounts();
+
+  $condition_info = _uc_discounts_get_conditions();
+  $action_info = _uc_discounts_get_actions();
+
+  foreach ($discount_list as $discount) {
+
+//drupal_set_message("testing discount:(".$discount->id.") ".$discount->name);
+    $discount_amount = 0;
+    // skip discounts which may not be applied with other discounts
+    if ($discount->is_exclusive && !empty($apply_discounts)) {
+      continue;
+    }
+    // load conditions for the discount
+
+    $condition_list = uc_discounts_get_discount_conditions($discount->id);
+    $condition_groups = array();
+    $condition_counts = array();
+
+    foreach ($condition_list as $condition) {
+//drupal_set_message("checking condition:(".$condition->id.") ".$condition->condition_group.": ".$condition_info[$condition->property]['check_callback']);
+      // skip if this condition group has already failed
+      if (isset($condition_groups[$condition->condition_group]) && $condition_groups[$condition->condition_group] == FALSE) {
+        continue;
+      }
+
+      // check if condition matches
+      if (isset($condition_info[$condition->property]['check_callback'])) {
+        $check_callback = $condition_info[$condition->property]['check_callback'];
+        $condition_groups[$condition->condition_group] = $check_callback($condition, $total_price, $cart_copy);
+//drupal_set_message("condition group status: ".$condition_groups[$condition->condition_group]);
+      }
+      if (isset($condition_info[$condition->property]['count_callback'])) {
+        $count_callback = $condition_info[$condition->property]['count_callback'];
+        $condition_counts[$condition->condition_group] += $count_callback($condition, $cart_copy);
+      }
+
+      foreach ($condition_groups as $i => $check) {
+        $c = isset($condition_counts[$i]) ? $condition_counts[$i] : false;
+        if ($c === false) { }
+        elseif ($condition->op == '=' && $c == $condition->value) { $condition_groups[$i] = TRUE; }
+        elseif ($condition->op == '!=' && $c != $condition->value) { $condition_groups[$i] = TRUE; }
+        elseif ($condition->op == '>=' && $c >= $condition->value) { $condition_groups[$i] = TRUE; }
+        elseif ($condition->op == '>' && $c > $condition->value) { $condition_groups[$i] = TRUE; }
+        elseif ($condition->op == '<=' && $c <= $condition->value) { $condition_groups[$i] = TRUE; }
+        elseif ($condition->op == '<' && $c < $condition->value) { $condition_groups[$i] = TRUE; }
+        else { $condition_groups[$i] = FALSE; }
+      }
+    }
+
+    // did any condition groups match
+    if (array_search(TRUE, $condition_groups) !== FALSE) {
+//drupal_set_message("condition group matches");
+      $action_list = uc_discounts_get_discount_actions($discount->id);
+      foreach ($action_list as $action) {
+        if (!isset($action_info[$action->property]['apply_callback'])) {
+          continue;
+        }
+//drupal_set_message("DISCOUNTS: applying action(".$action->id.") ".$action_info[$action->property]['apply_callback']);
+        $apply_callback = $action_info[$action->property]['apply_callback'];
+        $apply_amount = $apply_callback($op, $action, $total_price, $cart_copy);
+        $discount_amount += $apply_amount;
+      }
+      $apply_discounts[$discount->id] = array(
+        'description' => check_plain($discount->description),
+        'amount' => $discount_amount,
+      );
+      $total_price -= $discount_amount;
+    }
+      if ($discount->do_end_processing) {
+      break;
+    }
+  }
+
+  // refresh the cart - somehow, the price modules are affecting it
+  //$cart = uc_cart_get_contents(NULL, 'rebuild');
+  return $apply_discounts;
+}
+
+/*
+ * Modified version of uc_discounts_apply_discounts to get the
+ * discounted price of a single item.
+ */
+function uc_discounts_product_discount_price($product) {
+  // to use same code as above function, create an pseudo shopping cart
+  // array from the specified product
+  $cart_copy = array();
+  $prod_proto = drupal_clone($product);
+  $prod_proto->cart_id = 0;
+  $prod_proto->qty = 1;
+  $prod_proto->data = array();
+  $prod_proto->price = $product->sell_price;
+  $cart_copy[] = $prod_proto;
+
+  // get and store product's sell price
+  $total_price = $product->sell_price;
+
+  // check against order discounts
+  $apply_discounts = array();
+  $discount_list = uc_discounts_get_discounts();
+
+  $condition_info = _uc_discounts_get_conditions();
+  $action_info = _uc_discounts_get_actions();
+
+  foreach ($discount_list as $discount) {
+
+//drupal_set_message("testing discount:(".$discount->id.") ".$discount->name);
+    $discount_amount = 0;
+    // skip discounts which may not be applied with other discounts
+    if ($discount->is_exclusive && !empty($apply_discounts)) {
+      continue;
+    }
+    // load conditions for the discount
+
+    $condition_list = uc_discounts_get_discount_conditions($discount->id);
+    $condition_groups = array();
+    $condition_counts = array();
+
+    foreach ($condition_list as $condition) {
+//drupal_set_message("checking condition:(".$condition->id.") ".$condition->condition_group.": ".$condition_info[$condition->property]['check_callback']);
+      // skip if this condition group has already failed
+      if (isset($condition_groups[$condition->condition_group]) && $condition_groups[$condition->condition_group] == FALSE) {
+        continue;
+      }
+
+      // check if condition matches
+      if (isset($condition_info[$condition->property]['check_callback'])) {
+        $check_callback = $condition_info[$condition->property]['check_callback'];
+        $condition_groups[$condition->condition_group] = $check_callback($condition, $total_price, $cart_copy);
+//drupal_set_message("condition group status: ".$condition_groups[$condition->condition_group]);
+      }
+      if (isset($condition_info[$condition->property]['count_callback'])) {
+        $count_callback = $condition_info[$condition->property]['count_callback'];
+        $condition_counts[$condition->condition_group] += $count_callback($condition, $cart_copy);
+      }
+
+      foreach ($condition_groups as $i => $check) {
+        $c = isset($condition_counts[$i]) ? $condition_counts[$i] : false;
+        if ($c === false) { }
+        elseif ($condition->op == '=' && $c == $condition->value) { $condition_groups[$i] = TRUE; }
+        elseif ($condition->op == '!=' && $c != $condition->value) { $condition_groups[$i] = TRUE; }
+        elseif ($condition->op == '>=' && $c >= $condition->value) { $condition_groups[$i] = TRUE; }
+        elseif ($condition->op == '>' && $c > $condition->value) { $condition_groups[$i] = TRUE; }
+        elseif ($condition->op == '<=' && $c <= $condition->value) { $condition_groups[$i] = TRUE; }
+        elseif ($condition->op == '<' && $c < $condition->value) { $condition_groups[$i] = TRUE; }
+        else { $condition_groups[$i] = FALSE; }
+      }
+    }
+
+    // did any condition groups match
+    if (array_search(TRUE, $condition_groups) !== FALSE) {
+//drupal_set_message("condition group matches");
+      $action_list = uc_discounts_get_discount_actions($discount->id);
+      foreach ($action_list as $action) {
+        if (!isset($action_info[$action->property]['apply_callback'])) {
+          continue;
+        }
+//drupal_set_message("DISCOUNTS: applying action(".$action->id.") ".$action_info[$action->property]['apply_callback']);
+        $apply_callback = $action_info[$action->property]['apply_callback'];
+        $apply_amount = $apply_callback($op, $action, $total_price, $cart_copy);
+        $discount_amount += $apply_amount;
+      }
+      if(!empty($discount_amount)) {
+        $apply_discounts[$discount->id] = array(
+          'description' => check_plain($discount->description),
+          'amount' => $discount_amount,
+        );
+      }
+    }
+  }
+
+  // refresh the cart - somehow, the price modules are affecting it
+  //$cart = uc_cart_get_contents(NULL, 'rebuild');
+  return $apply_discounts;
+}
+
+/*******************************************************************************
+ * Module and Helper Functions
+ ******************************************************************************/
+
+/**
+ * Load a discount
+ *
+ * @param $discount_id
+ * @return object
+ *   Discount object. If discount_id is 0, return the default values.
+ */
+function uc_discounts_load_discount($discount_id) {
+  if ($discount_id == 0) {
+    // return object with default values
+    $discount = new stdClass;
+    $discount->id = 0;
+    $discount->name = '';
+    $discount->description = '';
+    $discount->max_discounts = 0;
+    $discount->do_end_processing = 0;
+    $discount->is_exclusive = 0;
+    $discount->weight = 0;
+    $discount->start_time = time();
+    $discount->end_time = time();
+    $discount->is_active = 0;
+  }
+  else {
+    $result = db_query('SELECT * FROM {uc_discounts} WHERE id=%d', $discount_id);
+    $discount = db_fetch_object($result);
+    if (!$discount) {
+    $condition->amount = '';
+      drupal_goto('/admin/store/discounts');
+    }
+  }
+  return $discount;
+}
+
+/**
+ * Load a condition for an order discount
+ *
+ * @param $condition_id
+ */
+function uc_discounts_load_condition($condition_id) {
+  if ($condition_id == 0) {
+    // return object with default values
+    $condition = new stdClass;
+    $condition->id = 0;
+    $condition->discount_id = 0;
+    $condition->condition_group = 0;
+    $condition->property = '';
+    $condition->op = '';
+    $condition->item_id = 0;
+    $condition->value = '';
+    $condition->weight = 0;
+  }
+  else {
+    $result = db_query('SELECT * FROM {uc_discounts_conditions} WHERE id=%d', $condition_id);
+    $condition = db_fetch_object($result);
+    if (!$condition) {
+      drupal_goto('admin/store/discounts');
+    }
+  }
+
+  return $condition;
+}
+
+/**
+ * Load an action for a discount
+ *
+ * @param $action_id
+ */
+function uc_discounts_load_action($action_id) {
+  if ($action_id == 0) {
+    // return object with default values
+    $action = new stdClass;
+    $action->id = 0;
+    $action->discount_id = 0;
+    $action->property = '';
+    $action->item_id = 0;
+    $action->qty = 0;
+    $action->amount = '';
+  }
+  else {
+    $result = db_query('SELECT * FROM {uc_discounts_actions} WHERE id=%d', $action_id);
+    $action = db_fetch_object($result);
+    if (!$action) {
+      drupal_goto('admin/store/discounts');
+    }
+  }
+
+  return $action;
+}
+
+/**
+ * Fetch a list of discounts
+ *
+ * @param $get_all
+ *   If false, only retrieve current active discounts, based on start and
+ *   end time
+ * @return
+ *   array of discounts
+ */
+function uc_discounts_get_discounts($get_all = FALSE) {
+  if ($get_all) {
+    $result = db_query("SELECT * FROM {uc_discounts} ORDER BY weight");
+  }
+  else {
+    $now = time();
+    $result = db_query(
+      "SELECT * FROM {uc_discounts} WHERE start_time <= %d AND end_time >= %d AND is_active = 1 ORDER BY weight",
+      $now, $now
+    );
+  }
+  $discounts = array();
+  while ($row = db_fetch_object($result)) {
+    $discounts[$row->id] = $row;
+  }
+  return $discounts;
+}
+
+/**
+ * Retrieve the conditions for a given discount.
+ *
+ * @param $discount_id
+ * @return
+ *   array of conditions
+ */
+function uc_discounts_get_discount_conditions($discount_id) {
+  $sql = "SELECT id FROM {uc_discounts_conditions} WHERE discount_id=%d ";
+  $sql .= "ORDER BY condition_group, weight";
+  $result = db_query($sql, $discount_id);
+  $conditions = array();
+  while ($row = db_fetch_object($result)) {
+    $conditions[$row->id] = uc_discounts_load_condition($row->id);
+  }
+  return $conditions;
+}
+
+/**
+ * Retrieve the actions for a given discount.
+ *
+ * @param $discount_id
+ * @return
+ *   array of actions
+ */
+function uc_discounts_get_discount_actions($discount_id) {
+  $sql = "SELECT id FROM {uc_discounts_actions} WHERE discount_id=%d ";
+  $sql .= "ORDER BY weight";
+  $result = db_query($sql, $discount_id);
+  $actions = array();
+  while ($row = db_fetch_object($result)) {
+    $actions[$row->id] = uc_discounts_load_action($row->id);
+  }
+  return $actions;
+}
+
+/**
+ * Compare two values based on a compare type and comparison operator
+ *
+ * @param $compare_type
+ *   the type of comparison, for checking if the $op is valid
+ * @param $property
+ *   the value to be checked
+ * @param $op
+ *   comparison operator
+ * @param $value
+ *   the target value for comparison
+ */
+function uc_discounts_compare($compare_type, $property, $op, $value) {
+  switch ($compare_type) {
+    case 'integer':
+      $property = (int)$property;
+      $value = (int)$value;
+      break;
+    case 'numeric':
+      $property = (float)$property;
+      $value = (float)$value;
+      break;
+    case 'money':
+      $property = sprintf('%.2f', $property);
+      $value = sprintf('%.2f', $value);
+      break;
+    case 'date':
+      // for now, assume in correct Ymd format
+      break;
+    // no changes needed for text
+    default:
+      $compare_type = 'text';
+  }
+
+  // "not equal" is not valid for numeric comparisons  (why) ?
+  $valid_compare_types = _uc_discounts_get_comparisons($compare_type);
+  if (!in_array($op, $valid_compare_types)) {
+    drupal_set_message("Illegal $compare_type comparison operator '$op' used", 'error');
+    return FALSE;
+  }
+
+  switch ($op) {
+    case '>':
+      return ($property > $value);
+    case '>=':
+      return ($property >= $value);
+    case '<':
+      return ($property < $value);
+    case '<=':
+      return ($property <= $value);
+    case '=':
+      return ($property == $value);
+    case '!=':
+      return ($property != $value);
+    default:
+      drupal_set_message('Unknown comparison operator '. check_plain($op) .' used', 'error');
+      return FALSE;
+  }
+}
+
+/**
+ * Implementation of hook_store_status().
+ * Check there are discounts and conditions available
+ */
+function uc_discounts_store_status() {
+  $condition_list = _uc_discounts_get_conditions();
+  if (empty($condition_list)) {
+    $statuses[] = array(
+      'status' => 'error',
+      'title' => t('Discounts'),
+      'desc' => t('No discount conditions are available. <a href="!url">Enable</a> some of the discount conditions modules to create discounts.',
+        array('!url' => url('admin/build/modules'))
+      ),
+    );
+  }
+  $action_list = _uc_discounts_get_actions();
+  if (empty($action_list)) {
+    $statuses[] = array(
+      'status' => 'error',
+      'title' => t('Discounts'),
+      'desc' => t('No discount actions are available. <a href="!url">Enable</a> some of the discount actions modules to create discounts.', array('!url' => url('admin/build/modules'))),
+    );
+  }
+  return $statuses;
+}
+
+/**
+ * Load all of the conditions provided by additional discount modules
+ *
+ * @return array
+ */
+function _uc_discounts_get_conditions() {
+  static $conditions = NULL;
+  if ($conditions === NULL) {
+    $conditions = array();
+    $condition_list = module_invoke_all('discounts_condition');
+    foreach ($condition_list as $condition_info) {
+      $property = $condition_info['property'];
+      $conditions[$property] = $condition_info;
+    }
+  }
+  return $conditions;
+}
+
+/**
+ * Return an array of condition property names and descriptions for use as
+ * options in a select form field.
+ */
+function _uc_discounts_get_condition_form_values() {
+  $condition_list = _uc_discounts_get_conditions();
+  $form_values = array();
+  foreach ($condition_list as $condition) {
+    $condition_name = $condition['property'];
+    $form_values[$condition_name] = $condition['description'];
+    asort($form_values);
+  }
+  return $form_values;
+}
+
+/**
+ * Load all of the actions provided by additional discount modules
+ *
+ * @return array
+ */
+function _uc_discounts_get_actions() {
+  static $actions = NULL;
+  if ($actions === NULL) {
+    $actions = array();
+    $action_list = module_invoke_all('discounts_action');
+    foreach ($action_list as $action_info) {
+      $property = $action_info['property'];
+      $actions[$property] = $action_info;
+    }
+  }
+  return $actions;
+}
+
+/**
+ * Return an array of action property names and descriptions for use as
+ * options in a select form field.
+ */
+function _uc_discounts_get_action_form_values() {
+  $action_list = _uc_discounts_get_actions();
+  $form_values = array();
+  foreach ($action_list as $action) {
+    $action_name = $action['property'];
+    $form_values[$action_name] = $action['description'];
+    asort($form_values);
+  }
+  return $form_values;
+}
+
+/**
+ * Return a list of valid comparison operators for the compare type.
+ * The generated array is suitable for use in a select form field.
+ *
+ * @return array
+ */
+function _uc_discounts_get_comparisons($compare_type) {
+  switch ($compare_type) {
+    case 'integer':
+    case 'numeric':
+    case 'money':
+    case 'date':
+      $valid_compare_types = array(
+        '<' => '<',
+        '<=' => '<=',
+        '>' => '>',
+        '>=' => '>=',
+        '=' => '=',
+      );
+      break;
+    // default type is text
+    default:
+      $valid_compare_types = array(
+        '=' => '=',
+        '!=' => '!=',
+      );
+  }
+  return $valid_compare_types;
+}

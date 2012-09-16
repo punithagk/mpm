@@ -1,0 +1,50 @@
+
+The following properties are available for conditions:
+
+property
+  The program name of the condition
+description
+  A description which appears on forms
+compare_type
+  How this will be compared (integer, numeric, money, date, text)
+check_callback ($condition, $total_price, $cart)
+  A function which checks whether or not the condition matches.
+  $condition - a condition object from the database
+  $total_price - the sum of all products in the cart
+  $cart - the cart contents as returned by uc_cart_get_contents()
+value_field_callback ()
+  A function which returns the field definition for the value field
+value_format_callback ($value)
+  Formats the value for display in the conditions table
+  Defaults to same as input
+item_field_callback ()
+  A function which returns the field definition for the item field
+  Defaults to none
+item_name_callback ($item_id)
+  Convert an item id into an item name
+  Defaults to same as input
+
+The following properties are available for actions:
+
+property
+  The program name of the action
+description
+  A description which appears on forms
+has_qty_field
+  Whether or not to display the qty field (bool)
+  Defaults to FALSE
+item_field_callback ()
+  A function which returns the field definition for the item field
+  Defaults to none
+amount_callback ($value)
+  Format a value, such as displaying as a dollar amount
+  Default to same as input
+apply_callback ($op, $action, $total_price, &$cart)
+  Apply the action to the order
+  $op - the same op as passed to hook_checkout_pane()
+    - view, review
+  $action - an action object from the database
+  $total_price - the sum of all products in the cart
+  $cart - the cart contents as returned by uc_cart_get_contents().  This
+    can be modified for purpose of calculating other discounts, but does
+    not affect the final order.

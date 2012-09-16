@@ -1,0 +1,5 @@
+
+UC Discounts 5.x-1.x-dev, 2008-31-10
+------------------------------------
+- Initial commit of 6.x port onto DRUPAL-6--1 branch. See DRUPAL-5 CHANGELOG.txt
+  for details of previous changes.

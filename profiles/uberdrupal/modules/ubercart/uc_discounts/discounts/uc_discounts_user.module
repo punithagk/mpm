@@ -1,0 +1,76 @@
+<?php
+
+/*******************************************************************************
+ * Hook Functions (Ubercart)
+ ******************************************************************************/
+
+function uc_discounts_user_discounts_condition() {
+  $conditions[] = array(
+    'property' => 'user',
+    'description' => t('User'),
+    'compare_type' => 'text',
+    'check_callback' => 'uc_discounts_user_check',
+    'item_field_callback' => 'uc_discounts_user_item_field',
+    'item_name_callback' => 'uc_discounts_user_item_name',
+  );
+
+  return $conditions;
+}
+
+/*******************************************************************************
+ * Callback Functions, Forms, and Tables
+ ******************************************************************************/
+
+function uc_discounts_user_check($condition, $total_price, $cart) {
+  global $user;
+  return uc_discounts_compare('integer', $user->uid, $condition->op, $condition->item_id);
+}
+
+function uc_discounts_user_item_field() {
+  // Get user list
+  $users = users();
+
+  if (empty($users)) {
+    $field = array(
+      '#type' => 'item',
+      '#title' => t('User'),
+      '#description' => t('No users available'),
+    );
+  }
+  else {
+    $field = array(
+      '#type' => 'select',
+      '#title' => t('User'),
+      '#options' => $users,
+    );
+  }
+
+  return $field;
+}
+
+function uc_discounts_user_item_name($item_id) {
+  // Get user list
+  $users = users();
+
+  if (isset($users[$item_id])) {
+    return $users[$item_id];
+  }
+
+  return '';
+}
+
+/*******************************************************************************
+ * Helper Functions
+ ******************************************************************************/
+
+function users() {
+  $users = array();
+
+  $result = db_query("SELECT uid, name FROM {users} WHERE status = 1 ORDER BY name");
+
+  while ($user = db_fetch_object($result)) {
+    $users[$user->uid] = $user->name;
+  }
+
+  return $users;
+}

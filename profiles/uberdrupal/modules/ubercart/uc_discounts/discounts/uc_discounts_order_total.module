@@ -1,0 +1,95 @@
+<?php
+
+/*******************************************************************************
+ * Hook Functions (Ubercart)
+ ******************************************************************************/
+
+function uc_discounts_order_total_discounts_condition() {
+  $conditions[] = array(
+    'property' => 'order_total',
+    'description' => t('Order Total'),
+    'compare_type' => 'money',
+    'check_callback' => 'uc_discounts_order_total_check',
+    'value_field_callback' => 'uc_discounts_order_total_value_field',
+    'value_format_callback' => 'uc_discounts_order_total_value_format',
+  );
+
+  return $conditions;
+}
+
+function uc_discounts_order_total_discounts_action() {
+  $actions[] = array(
+    'property' => 'order_total',
+    'description' => t('Discount amount from order total'),
+    'apply_callback' => 'uc_discounts_order_total_apply',
+    'amount_callback' => 'uc_discounts_order_total_action_amount',
+  );
+
+  return $actions;
+}
+
+/*******************************************************************************
+ * Callback Functions, Forms, and Tables
+ ******************************************************************************/
+
+/**
+ * Generate the condition value field
+ */
+function uc_discounts_order_total_value_field() {
+  $field = array(
+    '#type' => 'textfield',
+    '#title' => t('Amount'),
+    '#maxlength' => 12,
+    '#size' => 6,
+  );
+  return $field;
+}
+
+/**
+ * Format the value field
+ */
+function uc_discounts_order_total_value_format($value) {
+  return sprintf('$%0.2d', $value);
+}
+
+/**
+ * check against the total price
+ */
+function uc_discounts_order_total_check($condition, $total_price, $cart) {
+  return uc_discounts_compare('money', $total_price, $condition->op, $condition->value);
+}
+
+/**
+ * Format the amount as percentage or money
+ */
+function uc_discounts_order_total_action_amount($value) {
+  if (substr($value, -1) != '%') {
+    $value = uc_currency_format($value);
+  }
+  return $value;
+}
+
+/**
+ * Calculate the amount of the discount
+ */
+function uc_discounts_order_total_apply($op, $action, $total_price, &$cart) {
+  // ends with %?
+  if (substr($action->amount, -1) == '%') {
+    $discount_percent = substr($action->amount, 0, -1) / 100;
+    if ($discount_percent > 1) {
+      // invalid percentage
+      drupal_set_message(t('Cannot apply discount greater than 100% to order', 'error'));
+      $discount_percent = 0;
+    }
+    $discount = $total_price * $discount_percent;
+  }
+  // starts with $?
+  elseif (substr($action->amount, 0, 1) == '$') {
+    $discount = substr($action->amount, 1);
+  }
+  else {
+    $discount = $action->amount;
+  }
+  return $discount;
+}
+

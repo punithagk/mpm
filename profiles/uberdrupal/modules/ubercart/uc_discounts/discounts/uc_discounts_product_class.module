@@ -1,0 +1,198 @@
+<?php
+
+/*******************************************************************************
+ * Hook Functions (Ubercart)
+ ******************************************************************************/
+
+function uc_discounts_product_class_discounts_condition() {
+  $conditions[] = array(
+    'property' => 'product_class',
+    'description' => t('Product Type'),
+    'compare_type' => 'integer',
+    'check_callback' => 'uc_discounts_product_class_check',
+    'product_class_callback' => 'uc_discounts_product_class_class_name',
+    'item_name_callback' => 'uc_discounts_product_class_item_name',
+    'item_field_callback' => 'uc_discounts_product_class_item_field',
+    'value_field_callback' => 'uc_discounts_product_class_value_field',
+  );
+
+  return $conditions;
+}
+
+function uc_discounts_product_class_discounts_action() {
+  $actions[] = array(
+    'property' => 'product_class_items',
+    'description' => t('Discount all products of a type from order'),
+    'has_qty_field' => TRUE,
+    'item_field_callback' => 'uc_discounts_product_class_item_field', //recycle
+    'product_class_callback' => 'uc_discounts_product_class_class_name', //recycle
+    'apply_callback' => 'uc_discounts_product_class_apply',
+  );
+
+  return $actions;
+}
+
+/*******************************************************************************
+ * Callback Functions, Forms, and Tables
+ ******************************************************************************/
+
+function uc_discounts_product_class_check($condition, $total_price, $cart) {
+  $product_count = 0;
+  foreach ($cart as $product) {
+    if ($product->type == $condition->item_id) {
+      $product_count += $product->qty;
+    }
+  }
+
+  if ($product_count == 0) {
+    return FALSE;
+  }
+  elseif ($condition->op == '=' && $product_count >= $condition->value) {
+    return TRUE;
+  }
+  elseif ($condition->op == '!=' && $product_count != $conditions->value) {
+    return TRUE;
+  }
+  elseif ($condition->op == '>=' && $product_count >= $condition->value) {
+    return TRUE;
+  }
+  elseif ($condition->op == '>' && $product_count > $condition->value) {
+    return TRUE;
+  }
+  elseif ($condition->op == '<=' && $product_count <= $condition->value) {
+    return TRUE;
+  }
+  elseif ($condition->op == '<' && $product_count < $condition->value) {
+    return TRUE;
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Given a product id (nid), return the product name
+ */
+function uc_discounts_product_class_class_name($product_id) {
+  $result = db_query('SELECT type FROM {node} WHERE nid=%d', $product_id);
+  $product_name = check_plain(db_result($result));
+  return $product_name;
+}
+
+function uc_discounts_product_class_item_name($class_id) {
+  $result = db_query("SELECT name FROM {uc_product_classes} WHERE pcid='%s'", $class_id);
+  $class_name = check_plain(db_result($result));
+  return $class_name;
+}
+
+/**
+ * Generate the condition item field
+ */
+function uc_discounts_product_class_item_field() {
+  // load list of products from the database
+  // no function in uc_products to do this.  This may need refining later
+  $classes = array();
+
+  $result = db_query("SELECT pcid,name FROM {uc_product_classes} ORDER BY pcid");
+  while ($row = db_fetch_object($result)) {
+    $classes[$row->pcid] = check_plain($row->name);
+  }
+
+  if (empty($classes)) {
+    $field = array(
+      '#type' => 'item',
+      '#title' => t('Product Type'),
+      '#description' => t('No product classes available'),
+    );
+  }
+  else {
+    $field = array(
+      '#type' => 'select',
+      '#title' => t('Product Types'),
+      '#options' => $classes,
+    );
+  }
+
+  return $field;
+}
+
+/**
+ * Generate the condition value field
+ */
+function uc_discounts_product_class_value_field() {
+  $field = array(
+    '#type' => 'textfield',
+    '#title' => t('Quantity'),
+    '#maxlength' => 12,
+    '#size' => 6,
+    '#required' => TRUE,
+  );
+  return $field;
+}
+
+function uc_discounts_product_class_apply($op, $action, $total_price, &$cart) {
+  // get conditions to make sure products can't be used more than once for
+  // a discount
+  $sql = "SELECT * FROM {uc_discounts_conditions} WHERE discount_id=%d ";
+  $sql .= "AND property='product_class' AND item_id='%s' ";
+  $sql .= "ORDER BY condition_group, weight";
+  $result = db_query($sql, $action->discount_id, $action->item_id);
+  $condition_list = array();
+  while ($row = db_fetch_object($result)) {
+    $condition_list[$row->id] = $row;
+  }
+
+  if (empty($condition_list)) {
+    return 0;
+  }
+
+  // make sure condition is satisfied and action is possible
+  $product_price = 0;
+  foreach ($cart as $index => $product) {
+    if ($product->nid == $action->item_id || $product->type == $action->item_id) {
+      $product_count += $product->qty;
+      $product_price = $product->price;
+      $product_found[$index] = $product->qty;
+    }
+  } // foreach product
+
+  if (empty($product_count) || empty($product_price)) {
+    return 0;
+  }
+
+  // calculate discount amount
+  if (substr($action->amount, -1) == '%') {
+    $discount_percent = substr($action->amount, 0, -1) / 100;
+    if ($discount_percent > 1) {
+      // invalid percentage
+      drupal_set_message(t('Cannot apply product discount greater than 100%', 'error'));
+      $discount_percent = 0;
+    }
+    $discount = $product_price * ($discount_percent * $product_count);
+  }
+  else {
+    if (substr($action->amount, 0, 1) == '$') {
+      $discount_amount = substr($action->amount, 1);
+    }
+    else {
+      $discount_amount = $action->amount;
+    }
+    if ($discount_amount > $product_price) {
+      // do not allow discounting greater than the product price
+      $discount_amount = $product_price;
+    }
+    $discount = $discount_amount * $product_count;
+  }
+
+  // no refunds
+  if ($discount > $total_price) {
+    $discount = $total_price;
+  }
+
+  // remove affected items from cart
+  foreach ($product_found as $cart_index => $product_count) {
+    $cart[$cart_index]->qty -= $product_count;
+  }
+
+  return $discount;
+}

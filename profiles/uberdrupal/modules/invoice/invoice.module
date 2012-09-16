@@ -1,0 +1,974 @@
+<?php
+// $Id: invoice.module,v 1.1.2.8 2010/10/01 14:09:54 pvogelaar Exp $
+
+/**
+ * @file
+ * Invoice module
+ * 
+ * This module was developed by Platina Designs, http://www.platinadesigns.nl
+ *
+ * @author Pieter Vogelaar <ps.vogelaar@platinadesigns.nl>
+ */
+
+// Set locale so money has the right format for the preferred culture
+setlocale(LC_MONETARY, variable_get('invoice_locale', 'en_US.utf8'));
+
+// Include files
+
+// Ajax functions
+require_once dirname(__FILE__) .'/invoice_ajax.inc';
+// Form functions
+require_once dirname(__FILE__) .'/invoice_form.inc';
+// Helper functions
+require_once dirname(__FILE__) .'/invoice_helpers.inc';
+
+/**
+ * Implementation of hook_node_info()
+ */
+function invoice_node_info() {
+  return array(
+    'invoice' => array(
+      'name' => t('Invoice'),
+      'module' => 'invoice',
+      'description' => t("If you want to add an invoice, use this content type."),
+      'has_title' => TRUE,
+      'title_label' => t('Title'),
+      'has_body' => TRUE,
+      'body_label' => t('Body'),
+    )
+  );
+}
+
+/**
+ * Implementation of hook_menu()
+ */
+function invoice_menu() {
+  $items = array();
+  $items['invoices'] = array(
+    'title' => 'Invoices',
+    'page callback' => 'invoice_invoices',
+    'access arguments' => array('access invoices'),
+  );  
+  $items['invoice/set/template'] = array(
+    'title' => 'Edit invoice',
+    'page callback' => 'invoice_set_template',    
+    'access arguments' => array('administer invoices'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['invoice/print/%'] = array(
+    'title' => 'Invoice in HTML print format',
+    'page callback' => 'invoice_view_print',
+    'page arguments' => array(2),
+    'access arguments' => array('access invoices'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['invoice/pdf/%'] = array(
+    'title' => 'Invoice in PDF format',
+    'page callback' => 'invoice_view_pdf',
+    'page arguments' => array(2),
+    'access arguments' => array('access invoices'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['invoice/set/pay_status/%/%'] = array(
+    'title' => 'Set invoice pay status',
+    'page callback' => 'invoice_set_pay_status',
+    'page arguments' => array(3, 4),
+    'access arguments' => array('administer invoices'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['invoice/search/customer'] = array(
+    'title' => 'Search customer',
+    'page callback' => 'invoice_search_customer',
+    'page arguments' => array(3),
+    'access callback' => 'invoice_user_access_handler',
+    'access arguments' => array(array('administer invoices', 'administer own invoices')),
+    'type' => MENU_CALLBACK,
+  );
+  $items['invoice/get/customer_info'] = array(
+    'title' => 'Get customer info',
+    'page callback' => 'invoice_get_customer_info',
+    'access callback' => 'invoice_user_access_handler',
+    'access arguments' => array(array('administer invoices', 'administer own invoices')),
+    'type' => MENU_CALLBACK,
+  );
+  $items['invoice/save/item'] = array(
+    'title' => 'Save item',
+    'page callback' => 'invoice_save_item',
+    'access callback' => 'invoice_user_access_handler',
+    'access arguments' => array(array('administer invoices', 'administer own invoices')),
+    'type' => MENU_CALLBACK,
+  );
+  $items['invoice/edit/item'] = array(
+    'title' => 'Edit item',
+    'page callback' => 'invoice_edit_item',    
+    'access callback' => 'invoice_user_access_handler',
+    'access arguments' => array(array('administer invoices', 'administer own invoices')),
+    'type' => MENU_CALLBACK,
+  );
+  $items['invoice/delete/item'] = array(
+    'title' => 'Delete item',
+    'page callback' => 'invoice_delete_item',    
+    'access callback' => 'invoice_user_access_handler',
+    'access arguments' => array(array('administer invoices', 'administer own invoices')),
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/settings/invoice'] = array(
+    'title' => 'Invoice',
+    'page callback' => 'invoice_settings',    
+    'access arguments' => array('administer invoices'),
+    'description' => 'Create and manage invoices.',
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['invoice/installed_locales'] = array(
+    'title' => 'Installed locales on your system',
+    'page callback' => 'invoice_installed_locales',    
+    'access arguments' => array('administer invoices'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * User access handler to support multiple permissions for a menu item
+ *
+ * @param array $permissions
+ * @return boolean
+ */
+function invoice_user_access_handler(array $permissions = array()) {
+  $allow = FALSE;
+
+  if (count($permissions) > 0) {
+    foreach($permissions as $permission) {
+      if (user_access($permission)) {
+        $allow = TRUE;
+        break;
+      }
+    }
+  }
+  else {
+    $allow = TRUE;
+  }
+
+  return $allow;
+}
+
+/**
+ * Implementation of hook_perm()
+ */
+function invoice_perm() {
+  return array('access invoices', 'administer invoices', 'administer own invoices');
+}
+
+/**
+ * Implementation of hook_access()
+ *
+ * @param string $op
+ * @param object $node
+ * @param object $account
+ * @return boolean
+ */
+function invoice_access($op, $node, $account) {
+  if ($op == 'view') {
+    return user_access('access invoices', $account);
+  }
+  if ($op == 'create') {
+    if (user_access('administer invoices', $account) || (user_access('administer own invoices', $account))) {
+      return TRUE;
+    }
+  }
+  if ($op == 'update') {
+    if (user_access('administer invoices', $account) || (user_access('administer own invoices', $account) && ($account->uid == $node->uid))) {
+      return TRUE;
+    }
+  }
+  if ($op == 'delete') {
+    if (user_access('administer invoices', $account) || (user_access('administer own invoices', $account) && ($account->uid == $node->uid))) {
+      return TRUE;
+    }
+  }
+}
+
+/**
+ * Implementation of hook_theme()
+ *
+ * @param unknown_type $existing
+ * @param unknown_type $type
+ * @param unknown_type $theme
+ * @param unknown_type $path
+ * @return array
+ */
+function invoice_theme($existing, $type, $theme, $path) {
+  return array(
+    'invoice_body' => array(
+      'arguments' => array('node' => NULL, 'type' => NULL),
+    ),
+    'invoice_markup' => array(
+      'arguments' => array('s_fieldname' => NULL, 'value' => NULL, 's_title' => NULL),
+    ),
+    'invoice_table' => array(
+      'arguments' => array('header' => NULL, 'rows' => NULL, 'attributes' => NULL, 'caption' => NULL),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_load()
+ *
+ * @param object $node
+ * @return mixed
+ */
+function invoice_load($node) {
+  (object) $o_additions;
+ 
+  // Get all invoices information
+  $o_invoice = db_fetch_object(db_query("SELECT *,ii.iid as invoice_number,ii.leading_zeros AS leading_zeros, ii.prefix AS prefix,
+    ii.description AS invoice_description, ii.pay_limit AS pay_limit, ic.description AS customer_description, t.name as template
+    FROM {invoice_invoices} ii
+    LEFT JOIN {invoice_customers} ic ON ic.invoice_id=ii.iid
+    LEFT JOIN {invoice_templates} t ON ii.tid=t.tid
+    WHERE nid=%d
+    GROUP BY ii.iid",
+    $node->nid
+  ));
+  
+  $a_totals = _invoice_get_invoice_totals($o_invoice->invoice_number);
+  
+  $o_invoice->extotal = $a_totals['extotal'];
+  $o_invoice->inctotal = $a_totals['inctotal'];
+  $o_invoice->vattotal = $a_totals['vattotal'];
+
+  // Determine template to use
+  $template = !empty($o_invoice->template) ? $o_invoice->template : variable_get('invoice_default_template', 'default');
+  
+  // Set locale so money has the right format for the preferred culture
+  if ($locale = _invoice_get_variable($template, 'locale')) {
+    setlocale(LC_MONETARY, $locale);
+  }
+  
+  // Calculate vat totals per different VAT percentage
+  $a_vattotals = array();
+  
+  $result = db_query("SELECT vat, (quantity*unitcost)*((vat / 100) +1) * (1 - (1 / ((vat / 100) +1))) as vattotal
+    FROM {invoice_items}
+    WHERE invoice_id=%d",
+    $o_invoice->invoice_number
+  );
+  
+  // SUM all vat totals per different VAT percentage
+  while ($row = db_fetch_object($result)) {
+    if (!isset($a_vattotals[$row->vat])) {
+      $a_vattotals[$row->vat] = array(
+        'vattotal' => $row->vattotal,
+      );  
+    }
+    else {
+      $a_vattotals[$row->vat]['vattotal'] += $row->vattotal;
+    }
+  }
+  
+  // Round every total per different VAT percentage
+  // and add a formatted version
+  foreach ($a_vattotals as $key => $total) {
+    $a_vattotals[$key]['vattotal'] = _invoice_round($total['vattotal'], 2);
+    $a_vattotals[$key]['formatted_vattotal'] = _invoice_format_money($total['vattotal'], 2);
+  }
+
+  // Set totals
+  $extotal = _invoice_round($o_invoice->extotal, 2);
+  $inctotal = _invoice_round($o_invoice->inctotal, 2);  
+  $vattotal = _invoice_round($o_invoice->vattotal, 2);
+
+  // Add general invoice information to the node object 
+  $o_additions->invoice = array(
+    'invoice_number' => $o_invoice->invoice_number,
+    'formatted_invoice_number' => _invoice_get_formatted_invoice_number($o_invoice->invoice_number, NULL, $node->created),
+    'invoice_number_zerofill' => $o_invoice->leading_zeros,
+    'invoice_number_prefix' => $o_invoice->prefix,
+    'description' => $o_invoice->invoice_description,
+    'vat' => $a_vattotals,
+    'pay_status' => $o_invoice->pay_status,
+    'pay_limit' => $o_invoice->pay_limit,
+    'template' => $template,
+    'extotal' => $extotal,
+    'inctotal' => $inctotal,
+    'formatted_vattotal' => _invoice_format_money($vattotal, 2),
+    'formatted_extotal' => _invoice_format_money($extotal, 2),
+    'formatted_inctotal' => _invoice_format_money($inctotal, 2),
+    'formatted_created' => format_date($node->created, 'custom', _invoice_get_variable($template, 'date_format')),
+  );
+  
+  // Add customer information to the node object 
+  $o_additions->customer = array(
+    'cid' => $o_invoice->cid,
+    'customer_number' => $o_invoice->customer_number,
+    'name' => $name,
+    'company_name' => $o_invoice->company_name,
+    'firstname' => $o_invoice->firstname,
+    'lastname' => $o_invoice->lastname,
+    'fullname' => $o_invoice->lastname . (!empty($o_invoice->firstname) ? ', '. $o_invoice->firstname : ''),
+    'street' => $o_invoice->street,
+    'building_number' => $o_invoice->building_number,
+    'zipcode' => $o_invoice->zipcode,
+    'city' => $o_invoice->city,
+    'country' => $o_invoice->country,
+    'coc_number' => $o_invoice->coc_number,
+    'vat_number' => $o_invoice->vat_number,
+    'description' => $o_invoice->customer_description,
+  );
+  
+  // Add invoices items to the node object
+  $o_additions->invoice_items = array();
+  
+  $result = db_query("SELECT * FROM {invoice_items} WHERE invoice_id=%d ORDER BY created ASC, weight ASC", $o_invoice->invoice_number);
+  while ($row = db_fetch_object($result)) {
+    
+    // Add invoice item row to the array 
+    $o_additions->invoice_items[] = array(
+      'iid' => $row->iid,
+      'description' => $row->description,
+      'quantity' => $row->quantity,
+      'unitcost' => $row->unitcost,
+      'vat' => $row->vat,
+      'formatted_exunitcost' => _invoice_round_and_format_money($row->unitcost, 3),
+      'formatted_incunitcost' => _invoice_round_and_format_money($row->unitcost * _invoice_vat_percent_to_decimal($row->vat), 2),
+      'formatted_extotal' => _invoice_round_and_format_money($row->quantity * $row->unitcost, 2),
+      'formatted_inctotal' => _invoice_round_and_format_money($row->quantity * $row->unitcost * _invoice_vat_percent_to_decimal($row->vat), 2), 
+    );
+  }
+      
+  return $o_additions;
+}
+
+/**
+ * Implementation of hook_nodeapi()
+ *
+ * @param object $node
+ * @param string $op
+ * @param string $teaser
+ * @param string $page
+ */
+function invoice_nodeapi(&$node, $op, $teaser, $page) {
+  switch ($op) {
+    case "presave":
+      if ($node->type == 'invoice') {
+        // If true we are creating a new invoice
+        if (intval($node->invoice_number) == 0) {
+          // Get new invoice number
+          if (intval($node->user_defined_invoice_number) > 0) {
+            $node->invoice_number = $node->user_defined_invoice_number;
+          }
+          else {
+            $node->invoice_number = _invoice_get_new_invoice_number();  
+          }
+        }
+        
+        // Save the title, this must happen when creating AND editing a node because otherwise
+        // the pathauto module will give an error
+        if (intval($node->invoice_number) > 0) {
+          $node->title = t('Invoice') .' #'. _invoice_get_formatted_invoice_number($node->invoice_number, $node);
+        }
+        
+        // Get customer number
+        if (!empty($node->company_name)) {
+          $customer_number = db_result(db_query("SELECT customer_number FROM {invoice_customers}
+            WHERE company_name='%s' AND country='%s' LIMIT 1",
+            $node->company_name,
+            $node->country
+          ));
+        }
+        elseif (!empty($node->lastname)) {
+          $customer_number = db_result(db_query("SELECT customer_number FROM {invoice_customers}
+            WHERE lastname='%s' AND zipcode='%s' AND building_number='%s' LIMIT 1",
+            $node->lastname,
+            $node->zipcode,
+            $node->building_number
+          ));
+        }
+        
+        // If customer number is still empty, get a new one
+        if (empty($customer_number)) {
+          $customer_number = 1 + db_result(db_query("SELECT MAX(customer_number) FROM {invoice_customers}"));
+        }
+        
+        // Add customer number to the node object
+        $node->customer_number = $customer_number;
+      }
+      break;
+  }
+}
+
+/**
+ * Invoice settings
+ */
+function invoice_settings() {
+  
+  // A little test to see if the function _invoice_round() rounds well on every server
+  if (_invoice_round(38.675, 2) != 38.68) {
+    drupal_set_message(t('TEST: The answer of _invoice_round(38.675, 2) must be 38.68, but is @answer! This problem is maybe caused by your PHP version.', array('@answer' => _invoice_round(38.675, 2))), 'error');
+  }
+  
+  $content = '';  
+  $content = drupal_get_form('invoice_settings_form');
+  return $content;
+}
+
+/**
+ * Submit function for the settings form
+ */
+function invoice_settings_form_submit(&$form_state, $form) {
+  $fv =& $form['values'];
+  
+  // Invoice specific settings
+  variable_set('invoice_locale', $fv['locale']);
+  variable_set('invoice_date_format', $fv['date_format']);
+  variable_set('invoice_vat', $fv['vat']);
+  variable_set('invoice_pay_limit', $fv['pay_limit']);
+  variable_set('invoice_invoice_number_zerofill', $fv['invoice_number_zerofill']);
+  variable_set('invoice_invoice_number_prefix', $fv['invoice_number_prefix']);
+  variable_set('invoice_default_template', $fv['default_template']);
+
+  // Display columns specific settings
+  variable_set('invoice_display_column_vat', $fv['display_column_vat']);
+  variable_set('invoice_display_column_exunitcost', $fv['display_column_exunitcost']);
+  variable_set('invoice_display_column_incunitcost', $fv['display_column_incunitcost']);
+  variable_set('invoice_display_column_extotal', $fv['display_column_extotal']);
+  variable_set('invoice_display_column_inctotal', $fv['display_column_inctotal']);
+  
+  // Supplier specific settings
+  variable_set('invoice_supplier_company_name', $fv['supplier_company_name']);
+  variable_set('invoice_supplier_street', $fv['supplier_street']);
+  variable_set('invoice_supplier_building_number', $fv['supplier_building_number']);
+  variable_set('invoice_supplier_zipcode', $fv['supplier_zipcode']);
+  variable_set('invoice_supplier_city', $fv['supplier_city']);
+  variable_set('invoice_supplier_country', $fv['supplier_country']);
+  variable_set('invoice_supplier_phone', $fv['supplier_phone']);
+  variable_set('invoice_supplier_fax', $fv['supplier_fax']);
+  variable_set('invoice_supplier_email', $fv['supplier_email']);
+  variable_set('invoice_supplier_web', $fv['supplier_web']);
+  variable_set('invoice_supplier_coc_number', $fv['supplier_coc_number']);
+  variable_set('invoice_supplier_vat_number', $fv['supplier_vat_number']);
+  
+  $a_templates = _invoice_get_templates();
+  
+  foreach ($a_templates as $s_template) {
+    $count = db_result(db_query("SELECT COUNT(*) FROM {invoice_templates} WHERE name='%s'", $s_template));
+    if ($count == 0) {
+      db_query("INSERT INTO {invoice_templates} (name) VALUES ('%s')", $s_template);
+    }
+    
+    
+    // Numeric fields in this query will become a zero if nothing is filled in, instead of the overloading system.
+    // So numeric fields that are empty will take over the general setting and update that in the database for this template.
+    db_query("UPDATE {invoice_templates} SET locale='%s', date_format='%s', vat=%d, pay_limit=%d,
+      supplier_company_name='%s', supplier_street='%s', supplier_building_number='%s', supplier_zipcode='%s', supplier_city='%s',
+      supplier_country='%s', supplier_phone='%s', supplier_fax='%s', supplier_email='%s', supplier_web='%s', supplier_coc_number='%s',
+      supplier_vat_number='%s', display_column_vat=%d, display_column_exunitcost=%d, display_column_incunitcost=%d,
+      display_column_extotal=%d, display_column_inctotal=%d
+      WHERE name='%s'",
+      $fv[$s_template .'_locale'],
+      $fv[$s_template .'_date_format'],      
+      $fv[$s_template .'_vat'] != '' ? $fv[$s_template .'_vat'] : $fv['vat'],
+      $fv[$s_template .'_pay_limit'] != '' ? $fv[$s_template .'_pay_limit'] : $fv['pay_limit'],
+      $fv[$s_template .'_supplier_company_name'],
+      $fv[$s_template .'_supplier_street'],
+      $fv[$s_template .'_supplier_building_number'],
+      $fv[$s_template .'_supplier_zipcode'],
+      $fv[$s_template .'_supplier_city'],
+      $fv[$s_template .'_supplier_country'],
+      $fv[$s_template .'_supplier_phone'],
+      $fv[$s_template .'_supplier_fax'],
+      $fv[$s_template .'_supplier_email'],
+      $fv[$s_template .'_supplier_web'],
+      $fv[$s_template .'_supplier_coc_number'],
+      $fv[$s_template .'_supplier_vat_number'],
+      $count > 0 ? $fv[$s_template .'_display_column_vat'] : 0, // set default value if we deal with a new template
+      $count > 0 ? $fv[$s_template .'_display_column_exunitcost'] : 1, // set default value if we deal with a new template
+      $count > 0 ? $fv[$s_template .'_display_column_incunitcost'] : 1, // set default value if we deal with a new template
+      $count > 0 ? $fv[$s_template .'_display_column_extotal'] : 1, // set default value if we deal with a new template
+      $count > 0 ? $fv[$s_template .'_display_column_inctotal'] : 1, // set default value if we deal with a new template
+      $s_template
+    );
+  }
+    
+  drupal_set_message(t('Succesfully saved'));
+}
+
+/**
+ * Overview of all invoices
+ */
+function invoice_invoices() {
+
+  $content = '';
+
+  //Our header defenition
+  $header = array(
+    array('data' => t('Invoice #'), 'field' => 'ii.iid'),    
+    array('data' => t('Customer'), 'field' => 'c.customer'),
+    array('data' => t('Total (ex)'), 'field' => 'extotal'),
+    array('data' => t('Total (inc)'), 'field' => 'inctotal'),    
+    array('data' => t('Created'), 'field' => 'invoices.created'),
+    array('data' => _invoice_get_icon('bullet_black', NULL, array('title' => t('sort by @s', array('@s' => t('Pay status'))))), 'field' => 'ii.pay_status'),
+    t('Actions')
+  );
+
+  if (!isset($_GET['order']) || empty($_GET['order'])) {
+    $_GET['order'] = t("Invoice #");
+    $_GET['sort'] = "desc";
+  }
+  
+  $query = "SELECT COUNT(*),ii.iid,ii.nid,ii.pay_limit,ii.pay_status,c.company_name,c.lastname,c.firstname,n.created,it.name as template
+    FROM {invoice_invoices} ii
+    LEFT JOIN {node} n ON ii.nid=n.nid
+    LEFT JOIN {invoice_customers} c ON ii.iid=c.invoice_id
+    LEFT JOIN {invoice_templates} it ON ii.tid=it.tid
+    GROUP BY ii.iid
+    ";
+  
+  //$query .= tablesort_sql($header);
+  $query .= "ORDER BY nid DESC";
+  
+  $count_query = "SELECT COUNT(*) FROM {invoice_invoices}";
+  
+  $rows = array();
+  $result = pager_query($query, 15, 0, $count_query);
+  while ($row = db_fetch_object($result)) {
+  
+    // Set locale so money has the right format for the preferred culture
+    if ($locale = _invoice_get_variable($row->template, 'locale')) {
+      setlocale(LC_MONETARY, $locale);
+    }
+    
+    // Get locale settings
+    $a_locales = localeconv();
+    
+    // Set formatted create date
+    $created = format_date($row->created, 'custom', variable_get('invoice_date_format' , ''));
+
+    // If no default invoice date format is set, use the small drupal date format
+    if (empty($created)) {
+      $created = format_date($row->created, 'small');
+    }
+    
+    // Get invoice totals
+    $a_totals = _invoice_get_invoice_totals($row->iid); 
+    
+    // Set pay status
+    $pay_status = $row->pay_status == 'paid' ? _invoice_get_icon('bullet_green', NULL, array('title' => t('Paid'))) : _invoice_get_icon('bullet_yellow', NULL, array('title' => t('Unpaid')));
+    
+    // Check if invoice has pay limit, if yes see if the date exceeded it
+    if ($row->pay_status == 'unpaid' && $row->pay_limit > 0) {
+      if (mktime(0, 0, 0, date('m'), date('d'), date('Y')) > $row->created + (86400 * $row->pay_limit)) {
+         $pay_status = _invoice_get_icon('bullet_red', NULL, array('title' => t('Overtime')));
+      }
+    }
+
+    $actions = '';
+    if (_invoice_user_has_admin_access_to_invoice($row->iid)) {
+      $actions = _invoice_get_icon('edit', 'node/'. $row->nid .'/edit', array('title' => t('Edit')))
+        . ($row->pay_status != 'paid' ? _invoice_get_icon('delete', 'node/'. $row->nid .'/delete', array('title' => t('Delete'))) : '');
+    }
+
+    if (user_access('administer invoices')) {
+      $actions .= ($row->pay_status != 'paid' ? _invoice_get_icon('accept', 'invoice/set/pay_status/'. $row->iid .'/paid/'. _invoice_getvars_array_to_string($_GET), array('title' => t('Set paid'))) : '')
+      . ($row->pay_status == 'paid' ? _invoice_get_icon('coins_delete', 'invoice/set/pay_status/'. $row->iid .'/unpaid/'. _invoice_getvars_array_to_string($_GET), array('title' => t('Set unpaid'))) : '');
+    }
+    
+    $rows[] = array(
+      'invoices.iid' => l(_invoice_get_formatted_invoice_number($row->iid, NULL, $row->created), 'node/'. $row->nid),
+      'customer' => !empty($row->company_name) ? _invoice_get_icon('building') .' '. $row->company_name : _invoice_get_icon('user') .' '. $row->lastname . (!empty($row->firstname) ? ', '. $row->firstname : ''),
+      'extotal' => _invoice_round_and_format_money($a_totals['extotal'], 2),
+      'inctotal' => _invoice_round_and_format_money($a_totals['inctotal'], 2),
+      'invoices.created' => $created,
+      'ii.status' => $pay_status,
+      'actions' => $actions,
+    );
+  }
+
+  $content .= theme('invoice_table', $header, $rows);
+  $content .= theme('pager');
+
+  return $content;
+}
+
+/**
+ * Implementation of node_validate()
+ */
+function invoice_validate($node, $form) {
+  if ($node->op != t('Delete')) {
+    _invoice_add_css_js();
+    
+    // Count invoice items
+    $count = db_result(db_query("SELECT COUNT(*) FROM {invoice_items} WHERE uid=%d AND invoice_id=%d",
+      $GLOBALS['user']->uid,
+      $node->invoice_number
+    ));
+    
+    // Display an error if there are no invoice items
+    if ($count == 0) {
+      form_set_error('description', t('You have to fill in at least one invoice item!'));
+    }
+    
+    if (empty($node->company_name) && empty($node->lastname)) {
+      form_set_error('company_name', t('Company name and lastname may not both be empty!'));
+    }
+  }
+
+  if ($node->op == t('Save')) {
+    $possible_new_invoice_number = _invoice_get_new_invoice_number(true);
+
+    // If user defined invoice number is higher than the new possible invoice number,
+    // use the defined invoice number as the new invoice number
+    if (intval($node->user_defined_invoice_number) > 0) {
+      if ($node->user_defined_invoice_number <= $possible_new_invoice_number) {
+        form_set_error('user_defined_invoice_number', t('The user defined invoice number is not greater than the latest invoice number "@invoice_number"!', array('@invoice_number' => $possible_new_invoice_number)));
+      }
+    }
+  }
+}
+
+/**
+ * Implementation of hook_insert()
+ */
+function invoice_insert($node) {
+
+  // Get template ID
+  $tid = db_result(db_query("SELECT tid FROM {invoice_templates} WHERE name='%s'", $node->template));
+  
+  // Create invoice
+  db_query("INSERT INTO {invoice_invoices} (iid,nid,leading_zeros,prefix,description,tid,pay_limit,uid) VALUES (%d,%d,%d,'%s','%s',%d,'%s',%d)",
+    $node->invoice_number,
+    $node->nid,
+    empty($node->invoice_invoice_number_zerofill) ? variable_get('invoice_invoice_number_zerofill', 0) : $node->invoice_invoice_number_zerofill,
+    empty($node->invoice_invoice_number_prefix) ? variable_get('invoice_invoice_number_prefix', NULL) : $node->invoice_invoice_number_prefix,
+    $node->invoice_description,
+    $tid,
+    $node->pay_limit,
+    $GLOBALS['user']->uid
+  );
+      
+  // Create customer
+  db_query("INSERT {invoice_customers} (customer_number,company_name,firstname,lastname,street,building_number,zipcode,city,country,coc_number,vat_number,description,invoice_id)
+    VALUES (%d, '%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s',%d)",
+    $node->customer_number,
+    $node->company_name,
+    $node->firstname,
+    $node->lastname,
+    $node->street,
+    $node->building_number,
+    $node->zipcode,
+    $node->city,
+    $node->country,
+    $node->coc_number,
+    $node->vat_number,
+    $node->customer_description,
+    $node->invoice_number
+  );
+      
+  // Add all temporary invoice items to this invoice
+  db_query("UPDATE {invoice_items} SET invoice_id=%d WHERE uid=%d AND invoice_id=0",
+    $node->invoice_number,
+    $GLOBALS['user']->uid
+  );
+  
+  db_query("UPDATE {node} SET promote=0 WHERE type='invoice' AND nid=%d", $node->nid);
+  
+  unset($_SESSION['invoice_template']);  
+}
+
+/**
+ * Implementation of hook_update()
+ */
+function invoice_update($node) {
+
+  $user_id = $node->uid;
+
+  // Only whith the permission "administer invoices" you are allowed to change invoices
+  // created by other users.
+  if (user_access('administer invoices')) {
+    $accessGranted = TRUE;
+  }
+  else {
+    // Make sure that this invoice belongs to this user
+    $count = db_result(db_query("SELECT COUNT(*) FROM {invoice_invoices} WHERE iid=%d AND uid=%d",
+      $node->invoice_number,
+      $user_id
+    ));
+
+    $accessGranted = $count > 0 ? TRUE : FALSE;
+  }
+
+  if ($accessGranted) {
+    // Get template ID
+    $tid = db_result(db_query("SELECT tid FROM {invoice_templates} WHERE name='%s'", $node->template));
+    
+    // Update invoice
+    db_query("UPDATE {invoice_invoices} SET leading_zeros=%d, prefix='%s', description='%s', tid='%s', pay_limit=%d, uid=%d WHERE iid=%d",
+      $node->invoice_invoice_number_zerofill,
+      $node->invoice_invoice_number_prefix,
+      $node->invoice_description,
+      $tid,
+      $node->pay_limit,
+      $user_id,
+      $node->invoice_number
+    );
+        
+    // Update customers
+    db_query("UPDATE {invoice_customers} SET customer_number=%d, company_name='%s', firstname='%s', lastname='%s', street='%s', building_number='%s',
+      zipcode='%s', city='%s', country='%s', coc_number='%s', vat_number='%s', description='%s'  
+      WHERE invoice_id=%d",
+      $node->customer_number,
+      $node->company_name,
+      $node->firstname,
+      $node->lastname,
+      $node->street,
+      $node->building_number,
+      $node->zipcode,
+      $node->city,
+      $node->country,
+      $node->coc_number,
+      $node->vat_number,
+      $node->description,
+      $node->invoice_number         
+    );
+        
+    // It's not needed to update invoice item data because they are directly updated by every AJAX call.
+    // However it's possible for a user whith the "administer invoices" permission to change the author
+    db_query("UPDATE {invoice_items} SET uid=%d WHERE invoice_id=%d", $user_id, $node->invoice_number);
+  }
+  else {
+    drupal_set_message(t('You are not the owner of this invoice!'), 'error');
+  }
+  
+  db_query("UPDATE {node} SET promote=0 WHERE type='invoice' AND nid=%d", $node->nid);
+  
+  unset($_SESSION['invoice_template']);
+}
+
+/**
+ * Implemenation of hook_delete()
+ */
+function invoice_delete(&$node) {
+  $invoice_number = db_result(db_query("SELECT iid FROM {invoice_invoices} WHERE nid=%d", $node->nid));
+  db_query("DELETE FROM {invoice_invoices} WHERE iid=%d", $invoice_number);
+  db_query("DELETE FROM {invoice_customers} WHERE invoice_id=%d", $invoice_number);
+  db_query("DELETE FROM {invoice_items} WHERE invoice_id=%d", $invoice_number);
+  unset($_SESSION['invoice_template']);
+}
+
+/**
+ * Implementation of hook_view()
+ */
+function invoice_view($node, $teaser = FALSE, $page = FALSE) {
+  $node->content['body'] = array(
+    '#value' => '<div class="view">'. theme('invoice_body', $node, 'view') .'</div>',    
+    '#weight' => 0,
+  );
+
+  $links = '<div class="invoice-links">';
+  $links .= _invoice_get_icon('pdf', 'invoice/pdf/'. $node->invoice['invoice_number'], array('width' => '30', 'height' => '30'), 'jpg');
+  $links .= _invoice_get_icon('print', 'invoice/print/'. $node->invoice['invoice_number'], array('width' => '30', 'height' => '30'), 'jpg');
+  $links .= '</div>';
+  
+  $node->content['invoice_links'] = array(
+    '#value' => $links,
+    '#weight' => 1,
+  );
+  
+  return $node;
+}
+
+/**
+ * List of installed locales
+ */
+function invoice_installed_locales() {
+  $locales = _invoice_get_installed_system_locales();
+  
+  if (count($locales) > 0 && !empty($locales[0])) {
+    $content = '<ul>';
+    foreach ($locales as $locale) {
+      $content .= '<li>'. $locale .'</li>';
+    }
+    $content .= '</ul>';
+  }
+  else {
+    $content = 'No locales found. But maybe the "locale -a" command is not supported on your server.';
+  }
+  
+  return $content;
+}
+
+/**
+ * Set the status of an invoice to paid
+ */
+function invoice_set_pay_status($invoice_number, $status) {
+
+  if ($status != 'paid' && $status != 'unpaid') {
+    drupal_set_message(t('Invalid invoice pay status'), 'error');
+  }
+  else {
+    db_query("UPDATE {invoice_invoices} SET pay_status='%s' WHERE iid=%d", $status, $invoice_number);
+    drupal_set_message('Succesfully changed pay status of invoice '. check_plain($invoice_number) .' to "paid"');
+  }
+
+  $exp = explode('?', $_GET['q']);
+  $query_string = '?q=&'. $exp[1];
+  
+  $a_query_vars = _invoice_getvars_string_to_array($query_string);
+
+  drupal_goto('invoices', $a_query_vars);
+}
+
+/**
+ * Display the invoice in HTML print format
+ */
+function invoice_view_print($invoice_number) {
+  echo _invoice_get_html($invoice_number, $node);
+}
+
+/**
+ * Display the invoice in PDF format
+ */
+function invoice_view_pdf($invoice_number) {
+  // include the dompdf library
+  _invoice_dompdf_include_lib();
+
+  $nid = db_result(db_query("SELECT nid FROM {invoice_invoices} WHERE iid=%d", $invoice_number));
+  $node = node_load($nid);
+  
+  $html = _invoice_get_html($invoice_number, $node, 'pdf');
+  $dompdf = new DOMPDF();
+  $dompdf->load_html($html);
+  $dompdf->render();
+  $dompdf->stream(t('invoice') .'-'. $node->invoice['formatted_invoice_number'] .".pdf", array('Attachment' => 1));
+  die();
+}
+
+/**
+ * Theme function for displaying the invoice
+ */
+function theme_invoice_body($node, $type=NULL) {
+
+  $content = '<div class="invoice-wrapper">';
+  
+  require_once dirname(__FILE__) .'/templates/'. $node->invoice['template'] .'.inc';
+  drupal_add_css(drupal_get_path('module', 'invoice') .'/templates/'. $node->invoice['template'] .'.css', 'module');
+
+  $content_function = '_invoice_'. $node->invoice['template'] .'_get_template_output';
+  $content .= $content_function($node, $type);  
+  
+  $content .= '</div>';
+  
+  return $content;
+}
+
+/**
+ * Add extra markup info to a markup form field
+ *
+ * @param string $s_field_name
+ * @param mixed $value
+ * @param string $s_title
+ */
+function theme_invoice_markup($s_field_name, $value, $s_title) {
+  $markup_before = '<div id="edit-'. $s_field_name .'-wrapper" class="form-item">
+    <label for="edit-'. $s_field_name .'">'. $s_title .':</label><div>';
+  $markup_after = '</div></div>';
+  
+  return $markup_before . $value . $markup_after; 
+}
+
+
+/**
+ * An override for the table_theme() function
+ *
+ * Added the possibility to disable the sticky header
+ * 
+ * @param unknown_type $header
+ * @param unknown_type $rows
+ * @param unknown_type $attributes
+ * @param unknown_type $caption
+ * @return unknown
+ */
+function theme_invoice_table($header, $rows, $attributes = array(), $caption = NULL) {
+
+  // Add sticky headers, if applicable.
+  if (count($header) && (bool) $attributes['disable_sticky_header'] != TRUE) {
+    drupal_add_js('misc/tableheader.js');
+    // Add 'sticky-enabled' class to the table to identify it for JS.
+    // This is needed to target tables constructed by this function.
+    $attributes['class'] = empty($attributes['class']) ? 'sticky-enabled' : ($attributes['class'] .' sticky-enabled');
+  }
+  else {
+    unset($attributes['disable_sticky_header']);
+  }
+
+  $output = '<table'. drupal_attributes($attributes) .">\n";
+
+  if (isset($caption)) {
+    $output .= '<caption>'. $caption ."</caption>\n";
+  }
+
+  // Format the table header:
+  if (count($header)) {
+    $ts = tablesort_init($header);
+    // HTML requires that the thead tag has tr tags in it follwed by tbody
+    // tags. Using ternary operator to check and see if we have any rows.
+    $output .= (count($rows) ? ' <thead><tr>' : ' <tr>');
+    foreach ($header as $cell) {
+      $cell = tablesort_header($cell, $header, $ts);
+      $output .= _theme_table_cell($cell, TRUE);
+    }
+    // Using ternary operator to close the tags based on whether or not there are rows
+    $output .= (count($rows) ? " </tr></thead>\n" : "</tr>\n");
+  }
+  else {
+    $ts = array();
+  }
+
+  // Format the table rows:
+  if (count($rows)) {
+    $output .= "<tbody>\n";
+    $flip = array('even' => 'odd', 'odd' => 'even');
+    $class = 'even';
+    foreach ($rows as $number => $row) {
+      $attributes = array();
+
+      // Check if we're dealing with a simple or complex row
+      if (isset($row['data'])) {
+        foreach ($row as $key => $value) {
+          if ($key == 'data') {
+            $cells = $value;
+          }
+          else {
+            $attributes[$key] = $value;
+          }
+        }
+      }
+      else {
+        $cells = $row;
+      }
+      if (count($cells)) {
+        // Add odd/even class
+        $class = $flip[$class];
+        if (isset($attributes['class'])) {
+          $attributes['class'] .= ' '. $class;
+        }
+        else {
+          $attributes['class'] = $class;
+        }
+
+        // Build row
+        $output .= ' <tr'. drupal_attributes($attributes) .'>';
+        $i = 0;
+        foreach ($cells as $cell) {
+          $cell = tablesort_cell($cell, $header, $ts, $i++);
+          $output .= _theme_table_cell($cell);
+        }
+        $output .= " </tr>\n";
+      }
+    }
+    $output .= "</tbody>\n";
+  }
+
+  $output .= "</table>\n";
+  return $output;
+}

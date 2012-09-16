@@ -1,0 +1,52 @@
+<?php
+// $Id: uc_discount_total.install,v 1.2.4.1 2009/12/24 13:58:33 glu2006 Exp $
+
+/**
+ * @file
+ * Discounts based on sum of all user's successfully completed purchases. Discount grows depending on orders total amount. */
+function uc_discount_total_schema() {
+  $schema = array();
+  
+  $schema['uc_discount_total'] = array(
+    'fields' => array(
+      'id' => array(
+        'description' => t('Discount total ID'),
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'total_min' => array(
+        'type' => 'numeric',
+        'precision' => 10,
+        'scale' => 2,
+        'not null' => TRUE,
+        'default' => 0.0,      
+      ),
+      'total_max' => array(
+        'type' => 'numeric',
+        'precision' => 10,
+        'scale' => 2,
+        'not null' => TRUE,
+        'default' => 0.0,      
+      ),
+      'total_rate' => array(
+        'type' => 'numeric',
+        'precision' => 10,
+        'scale' => 1,
+        'not null' => TRUE,
+        'default' => 0.0,      
+      ),      
+    ),
+    'primary key' => array('id'),
+  );
+  return $schema;
+}
+
+function uc_discount_total_install() {
+  drupal_install_schema('uc_discount_total');
+}
+
+function uc_discount_total_uninstall() {
+  drupal_uninstall_schema('uc_discount_total');
+}
+

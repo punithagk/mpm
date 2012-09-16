@@ -1,0 +1,592 @@
+# $Id: invoice.nl.po,v 1.1.2.4 2010/10/02 18:47:47 pvogelaar Exp $
+#
+# Dutch translation of Drupal (general)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  invoice_ajax.inc,v 1.1.2.6 2010/10/02 16:50:44 pvogelaar
+#  invoice_form.inc,v 1.1.2.9 2010/10/02 16:50:44 pvogelaar
+#  invoice.module,v 1.1.2.8 2010/10/01 14:09:54 pvogelaar
+#  default.inc,v 1.1.2.2 2009/01/02 21:24:23 pvogelaar
+#  invoice_helpers.inc,v 1.1.2.9 2010/10/02 18:23:20 pvogelaar
+#  invoice.info,v 1.1.2.5 2010/02/17 19:38:57 pvogelaar
+#  javascript/invoice.js: n/a
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2010-10-02 20:35+0200\n"
+"PO-Revision-Date: 2010-10-02 20:40+0100\n"
+"Last-Translator: P. S. Vogelaar <ps.vogelaar@platinadesigns.nl>\n"
+"Language-Team: Dutch <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
+
+#: invoice_ajax.inc:97;244;282
+msgid "You are not the owner of this item id!"
+msgstr "U bent niet de eigenaar van dit item id!"
+
+#: invoice_ajax.inc:120
+msgid "Error"
+msgstr "Fout"
+
+#: invoice_ajax.inc:120
+msgid "You have to fill in either \"Price without VAT\" or \"Price with VAT\"!"
+msgstr "U dient 'Prijs zonder BTW' of 'Prijs met BTW' in te vullen!"
+
+#: invoice_ajax.inc:190
+#: invoice_form.inc:190
+msgid "Add item"
+msgstr "Voeg item toe"
+
+#: invoice_ajax.inc:208
+#: invoice_form.inc:754
+#: invoice.module:567
+msgid "Edit"
+msgstr "Wijzigen"
+
+#: invoice_ajax.inc:213
+#: invoice_form.inc:759
+#: invoice.module:568;597
+msgid "Delete"
+msgstr "Verwijderen"
+
+#: invoice_ajax.inc:258
+msgid "This item id does not exist!"
+msgstr "Dit item id bestaat niet!"
+
+#: invoice_ajax.inc:266
+#: invoice.module:95
+msgid "Save item"
+msgstr "Sla item op"
+
+#: invoice_ajax.inc:306
+msgid "This item id does not exist, does not belong to this invoice or you are not the owner!"
+msgstr "Dit item bestaat niet, behoort niet toe aan deze factuur of u bent niet de eigenaar ervan!"
+
+#: invoice_form.inc:32
+msgid "Invoice template"
+msgstr "Factuur template"
+
+#: invoice_form.inc:55
+msgid "When editing this invoice, you'll have to save first before you can see template changes."
+msgstr "Bij het wijzigen van deze factuur dient u eerst op te slaan voordat u template wijzigingen zult zien."
+
+#: invoice_form.inc:64;196
+msgid "Customer details"
+msgstr "Klant gegevens"
+
+#: invoice_form.inc:67
+msgid "You either have to fill in Company name or Lastname. Firstname is optional and is only saved if a Lastname is filled in."
+msgstr "U dient tenminste een Bedrijfsnaam of Achternaam in te vullen. Voornaam is optioneel en wordt alleen opgeslagen als de Achternaam is ingevuld."
+
+#: invoice_form.inc:72
+#: invoice.module:80
+msgid "Search customer"
+msgstr "Zoek klant"
+
+#: invoice_form.inc:79;433;622
+msgid "Company name"
+msgstr "Bedrijfsnaam"
+
+#: invoice_form.inc:85
+msgid "Firstname"
+msgstr "Voornaam"
+
+#: invoice_form.inc:91
+msgid "Lastname"
+msgstr "Achternaam"
+
+#: invoice_form.inc:97;160;245;285
+#: templates/default.inc:189
+msgid "Description"
+msgstr "Beschrijving"
+
+#: invoice_form.inc:98;394;583
+#: templates/default.inc:112;192;286
+msgid "VAT"
+msgstr "BTW"
+
+#: invoice_form.inc:99
+msgid "Count"
+msgstr "Aantal"
+
+#: invoice_form.inc:100
+msgid "Unitcost (ex. VAT)"
+msgstr "Stukprijs (ex. BTW)"
+
+#: invoice_form.inc:101
+msgid "Unitcost (inc. VAT)"
+msgstr "Stukprijs (inc. BTW)"
+
+#: invoice_form.inc:102
+msgid "Subtotal (ex. VAT)"
+msgstr "Subtotaal (ex. BTW)"
+
+#: invoice_form.inc:103
+msgid "Subtotal (inc. VAT)"
+msgstr "Subtotaal (inc. BTW)"
+
+#: invoice_form.inc:109
+msgid "Invoice items"
+msgstr "Factuur items"
+
+#: invoice_form.inc:134
+msgid "Empty"
+msgstr "Leeg"
+
+#: invoice_form.inc:155
+msgid "Invoice item id"
+msgstr "Factuur item id"
+
+#: invoice_form.inc:166
+#: templates/default.inc:196
+msgid "Quantity"
+msgstr "Aantal"
+
+#: invoice_form.inc:172
+msgid "Price without VAT"
+msgstr "Prijs zonder BTW"
+
+#: invoice_form.inc:174
+msgid "If you don't fill in this field, you'll have to fill in \"Price with VAT\""
+msgstr "Indien u dit veld niet invuld, dan dient u 'Prijs met BTW' in te vullen"
+
+#: invoice_form.inc:178
+msgid "Price with VAT"
+msgstr "Prijs met BTW"
+
+#: invoice_form.inc:180
+msgid "If you don't fill in this field, you'll have to fill in \"Price without VAT\""
+msgstr "Indien u dit veld niet invult, dan dient u 'Prijs zonder BTW' in te vullen"
+
+#: invoice_form.inc:184
+msgid "VAT percentage"
+msgstr "BTW percentage"
+
+#: invoice_form.inc:191
+msgid "Cancel"
+msgstr "Annuleren"
+
+#: invoice_form.inc:196;252
+msgid "optional"
+msgstr "optioneel"
+
+#: invoice_form.inc:203;439;628
+msgid "Street"
+msgstr "Straat"
+
+#: invoice_form.inc:209;445;634
+msgid "Building number"
+msgstr "Gebouw nummer"
+
+#: invoice_form.inc:215;451;640
+msgid "Zipcode"
+msgstr "Postcode"
+
+#: invoice_form.inc:221;457;646
+msgid "City"
+msgstr "Stad"
+
+#: invoice_form.inc:227;463;652
+msgid "Country"
+msgstr "Land"
+
+#: invoice_form.inc:233
+msgid "Chamber of Commerce number"
+msgstr "Kamer van Koophandel nummer"
+
+#: invoice_form.inc:239;688
+msgid "VAT number"
+msgstr "BTW nummer"
+
+#: invoice_form.inc:252
+msgid "Invoice details"
+msgstr "Factuur gegevens"
+
+#: invoice_form.inc:262
+msgid "User defined invoice number"
+msgstr "Door gebruiker opgegeven factuur nummer"
+
+#: invoice_form.inc:266
+msgid "You can define an invoice number here. The number has to be higher than the latest invoice number though. It also has to be numeric."
+msgstr "U kunt hier een factuur nummer instellen. Het nummer dient echter hoger te zijn dan het laatst aangemaakte factuur nummer. Ook dient het numeriek te zijn."
+
+#: invoice_form.inc:271
+#: templates/default.inc:141
+msgid "Invoice number"
+msgstr "Factuur nummer"
+
+#: invoice_form.inc:277;359;564
+msgid "Pay limit"
+msgstr "Betalingstermijn"
+
+#: invoice_form.inc:280;362;567
+msgid "Pay limit in days"
+msgstr "Betalingstermijn in dagen"
+
+#: invoice_form.inc:291;367
+msgid "Invoice number zerofill"
+msgstr "Factuur nummer zerofill"
+
+#: invoice_form.inc:295;370
+msgid "If you want an invoice number to be displayed as \"0001\" fill in 4. If you just want to display invoice number \"1\" leave/set empty."
+msgstr "Als u een factuur nummer wilt weergeven als \"0001\" vul dan 4 in. Als u simpelweg het factuur nummer als \"1\" wilt weergeven laat of zet dit veld dan op leeg."
+
+#: invoice_form.inc:299;375
+msgid "Invoice number prefix"
+msgstr "Factuur nummer prefix"
+
+#: invoice_form.inc:303;378
+msgid "If you want an invoice number to be displayed as \"@year0001\" fill in \"%Y\". Fillin 4 in the zerofill field above for extra zero values."
+msgstr "Als u een factuur nummer wilt weergeven als \"@year0001\" vul dan \"%Y\" in. Vul in het zerofill veld hierboven 4 in."
+
+#: invoice_form.inc:304;379
+msgid "If a new year is reached the numbering will still continue sequentially, so if the year ended with \"@year0578\", the next year will start with \"@next_year0579\""
+msgstr "Als een nieuw jaar is bereikt, zal de nummering nog steeds opeenvolgend gebeuren. Als het jaar dus geïndigd is op \"@year0578\", zal het volgende jaar beginnen op \"@next_year0579\"."
+
+#: invoice_form.inc:305;380
+msgid "All !date values may be entered here with a \"%\" sign before it or every other text you like."
+msgstr "Alle !date waarden kunnen hier worden ingevuld met een \"%\" teken ervoor, ook iedere andere tekst is toegestaan."
+
+#: invoice_form.inc:321
+msgid "General settings"
+msgstr "Algemene instellingen"
+
+#: invoice_form.inc:327;532
+msgid "Locale"
+msgstr "Localisatie"
+
+#: invoice_form.inc:330;535
+msgid "Category/locale names can be found in !rfc1766 and !iso639. Systems can have different naming schemes for locales."
+msgstr "Categorie/localisatie namen kunnen worden gevonden in !rfc1766 en !iso639. Systemen kunnen verschillende naam schema's hebben voor localisatie items."
+
+#: invoice_form.inc:335;540
+msgid "On linux you can check the available locales on the server with the command \"locale -a\" or click below to see the same list."
+msgstr "Op linux is het mogelijk om alle beschikbare lokalen op de server te bekijken met het commando \"locale -a\" of u kunt klikken op de link hieronder voor hetzelfde overzicht."
+
+#: invoice_form.inc:336;541
+msgid "If your system/server is ubuntu (debian like) you can install more languages with the aptitude or synaptic package manager. Search for -language-pack-*-base."
+msgstr "Als uw systeem/server ubuntu (debian gebaseerd) is, dan kunt u meerdere talen installeren met aptitude of de synaptic package manager. Zoek naar -language-pack-*-base."
+
+#: invoice_form.inc:337;542
+msgid "If you install for example -language-pack-en-base you get over 10+ locales extra, like en_US, en_GB, en_AU, en_CA etc."
+msgstr "Als u bijvoorbeeld het pakket -language-pack-en-base installeerd krijgt u ongeveer 10+ lokalen toegevoegd, zoals en_US, en_GB, en_AU, en_CA, etc."
+
+#: invoice_form.inc:338;543
+msgid "For more information see !link."
+msgstr "Voor meer informatie zie !link."
+
+#: invoice_form.inc:344;549
+msgid "Date format"
+msgstr "Datum formaat"
+
+#: invoice_form.inc:347;552
+msgid "For example m/d/Y."
+msgstr "Bijvoorbeeld m/d/Y."
+
+#: invoice_form.inc:347;552
+msgid "See !link."
+msgstr "Zie !link."
+
+#: invoice_form.inc:347;552
+msgid "The date on the invoice will look like: @date_format"
+msgstr "De datum op de factuur zal er zo uitzien: @date_format"
+
+#: invoice_form.inc:352
+msgid "Default VAT precentage"
+msgstr "Standaard BTW percentage"
+
+#: invoice_form.inc:388;577
+msgid "Display invoice columns"
+msgstr "Weergave factuur kolommen"
+
+#: invoice_form.inc:400;589
+msgid "Unitcost (ex)"
+msgstr "Stukprijs (ex)"
+
+#: invoice_form.inc:406;595
+msgid "Unitcost (inc)"
+msgstr "Stukprijs (inc)"
+
+#: invoice_form.inc:412;601
+#: invoice.module:507
+msgid "Total (ex)"
+msgstr "Totaal (ex)"
+
+#: invoice_form.inc:418;607
+#: invoice.module:508
+msgid "Total (inc)"
+msgstr "Totaal (inc)"
+
+#: invoice_form.inc:427;616
+msgid "Supplier details"
+msgstr "Leverancier gegevens"
+
+#: invoice_form.inc:469;658
+msgid "Phone"
+msgstr "Telefoon"
+
+#: invoice_form.inc:475;664
+msgid "Fax"
+msgstr "Fax"
+
+#: invoice_form.inc:481;670
+msgid "Email"
+msgstr "Email"
+
+#: invoice_form.inc:487;676
+msgid "Web address"
+msgstr "Web adres"
+
+#: invoice_form.inc:493
+msgid "CoC Number"
+msgstr "KvK Nummer"
+
+#: invoice_form.inc:499
+msgid "VAT Number"
+msgstr "BTW nummer"
+
+#: invoice_form.inc:512
+msgid "Default template"
+msgstr "Standaard template"
+
+#: invoice_form.inc:525
+msgid "Template"
+msgstr "Template"
+
+#: invoice_form.inc:528
+msgid "If fields are also set in invoice general settings and the template field is empty, the general setting of the field will be used."
+msgstr "Als velden ook zijn ingevuld bij de standaard factuur instellingen en het veld bij template instellingen is leeg, dan wordt de waarde van de standaard instelling gebruikt."
+
+#: invoice_form.inc:557
+msgid "Default vat percentage"
+msgstr "Standaard btw percentage"
+
+#: invoice_form.inc:682
+msgid "CoC number"
+msgstr "KvK nummer"
+
+#: invoice_form.inc:696
+msgid "Submit"
+msgstr "Verzenden"
+
+#: invoice_form.inc:729
+msgid "Weight"
+msgstr "Gewicht"
+
+#: invoice_form.inc:733
+msgid "Optional. In the menu, the heavier items will sink and the lighter items will be positioned nearer the top."
+msgstr "Optioneel. In het menu, zwaarder laat items zakken en lichter laat items hoger worden geplaatst."
+
+#: invoice_helpers.inc:603
+msgid "The DOMPDF library could not be found!"
+msgstr "Het DOMPDF component kon niet worden gevonden!"
+
+#: invoice.module:31;368;116
+#: invoice.info:0
+#: templates/default.inc:98
+msgid "Invoice"
+msgstr "Factuur"
+
+#: invoice.module:33
+msgid "If you want to add an invoice, use this content type."
+msgstr "Gebruik dit content type als u een factuur wilt toevoegen."
+
+#: invoice.module:35
+msgid "Title"
+msgstr "Titel"
+
+#: invoice.module:37
+msgid "Body"
+msgstr "Body"
+
+#: invoice.module:407
+msgid "TEST: The answer of _invoice_round(38.675, 2) must be 38.68, but is @answer! This problem is maybe caused by your PHP version."
+msgstr "TEST: Het antwoord van _invoice_round(38.675, 2) moet 38.68 zijn, maar is @answer! Dit probleem wordt wellicht veroorzaakt door uw PHP versie."
+
+#: invoice.module:493
+msgid "Succesfully saved"
+msgstr "Succesvol opgeslagen"
+
+#: invoice.module:505;515
+msgid "Invoice #"
+msgstr "Factuur #"
+
+#: invoice.module:506
+msgid "Customer"
+msgstr "Klant"
+
+#: invoice.module:509
+msgid "Created"
+msgstr "Gemaakt op"
+
+#: invoice.module:510
+msgid "sort by @s"
+msgstr "sorteer op @s"
+
+#: invoice.module:510
+msgid "Pay status"
+msgstr "Betaal status"
+
+#: invoice.module:511
+msgid "Actions"
+msgstr "Acties"
+
+#: invoice.module:556
+msgid "Paid"
+msgstr "Betaald"
+
+#: invoice.module:556
+msgid "Unpaid"
+msgstr "Onbetaald"
+
+#: invoice.module:561
+msgid "Overtime"
+msgstr "Overtijd"
+
+#: invoice.module:572
+msgid "Set paid"
+msgstr "Zet op betaald"
+
+#: invoice.module:573
+msgid "Set unpaid"
+msgstr "Zet op niet betaald"
+
+#: invoice.module:608
+msgid "You have to fill in at least one invoice item!"
+msgstr "U dient tenminste een factuur item in te vullen!"
+
+#: invoice.module:612
+msgid "Company name and lastname may not both be empty!"
+msgstr "Bedrijfsnaam en achternaam kunnen niet beide leeg zijn!"
+
+#: invoice.module:616
+msgid "Save"
+msgstr "Opslaan"
+
+#: invoice.module:623
+msgid "The user defined invoice number is not greater than the latest invoice number \"@invoice_number\"!"
+msgstr "Het door de gebruiker opgegeven factuur nummer is niet groter dan het laatste factuur nummer \"@invoice_number\"!"
+
+#: invoice.module:739
+msgid "You are not the owner of this invoice!"
+msgstr "U bent niet de eigenaar van deze factuur!"
+
+#: invoice.module:806
+msgid "Invalid invoice pay status"
+msgstr "Ongeldige factuur betaal status"
+
+#: invoice.module:842
+msgid "invoice"
+msgstr "factuur"
+
+#: invoice.module:159
+msgid "access invoices"
+msgstr "toegang tot facturen"
+
+#: invoice.module:159
+msgid "administer invoices"
+msgstr "facturen beheren"
+
+#: invoice.module:159
+msgid "administer own invoices"
+msgstr "eigen facturen beheren"
+
+#: invoice.module:48
+msgid "Invoices"
+msgstr "Facturen"
+
+#: invoice.module:53
+msgid "Edit invoice"
+msgstr "Wijzig factuur"
+
+#: invoice.module:59
+msgid "Invoice in HTML print format"
+msgstr "Factuur in HTML print formaat"
+
+#: invoice.module:66
+msgid "Invoice in PDF format"
+msgstr "Factuur in PDF formaat"
+
+#: invoice.module:73
+msgid "Set invoice pay status"
+msgstr "Stel factuur betaal status in"
+
+#: invoice.module:88
+msgid "Get customer info"
+msgstr "Haal klant info op"
+
+#: invoice.module:102
+msgid "Edit item"
+msgstr "Wijzig item"
+
+#: invoice.module:109
+msgid "Delete item"
+msgstr "Verwijder item"
+
+#: invoice.module:119
+msgid "Create and manage invoices."
+msgstr "Maak en beheer facturen."
+
+#: invoice.module:123
+msgid "Installed locales on your system"
+msgstr "Geïnstalleerde lokalen op uw systeem"
+
+#: invoice.info:0
+msgid "Module to create invoices"
+msgstr "Module voor het maken van facturen."
+
+#: javascript/invoice.js:0
+msgid "Are you sure you want to delete this invoice item?"
+msgstr "Weet u zeker dat u dit factuur item wilt verwijderen?"
+
+#: templates/default.inc:111
+msgid "C.o.C."
+msgstr "K.v.K."
+
+#: templates/default.inc:111;112
+msgid "nr."
+msgstr "nr."
+
+#: templates/default.inc:137
+msgid "Date"
+msgstr "Datum"
+
+#: templates/default.inc:145
+msgid "Client number"
+msgstr "Klant nummer"
+
+#: templates/default.inc:151
+msgid "Page"
+msgstr "Pagina"
+
+#: templates/default.inc:199;204
+msgid "Unitcost"
+msgstr "Stukprijs"
+
+#: templates/default.inc:199;209
+msgid "ex"
+msgstr "ex"
+
+#: templates/default.inc:204;214
+msgid "inc"
+msgstr "inc"
+
+#: templates/default.inc:209;214
+msgid "Total"
+msgstr "Totaal"
+
+#: templates/default.inc:278
+msgid "Subtotal excl. VAT"
+msgstr "Subtotaal excl. BTW"
+
+#: templates/default.inc:295
+msgid "Total incl. VAT"
+msgstr "Totaal incl. BTW"
+
+#: templates/default.inc:304
+msgid "We kindly ask you to pay this invoice within @days days."
+msgstr "Wij verzoeken u vriendelijke deze factuur binnen @days dagen te voldoen."
+

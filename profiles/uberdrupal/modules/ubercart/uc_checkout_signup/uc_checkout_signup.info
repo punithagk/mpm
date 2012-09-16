@@ -1,0 +1,15 @@
+;$Id$
+
+name = "Ubercart Checkout Signup"
+description = "Adds an Ubercart checkout pane that allows customers to signup for a newsletter."
+package = "Ubercart - extra"
+dependencies[] = uc_cart
+dependencies[] = campaignmonitor
+core = 6.x
+php = 5.1
+; Information added by drupal.org packaging script on 2011-06-11
+version = "6.x-1.0"
+core = "6.x"
+project = "uc_checkout_signup"
+datestamp = "1307812022"
+

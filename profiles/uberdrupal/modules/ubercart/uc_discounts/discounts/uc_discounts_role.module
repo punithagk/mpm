@@ -1,0 +1,57 @@
+<?php
+
+/*******************************************************************************
+ * Hook Functions (Ubercart)
+ ******************************************************************************/
+
+function uc_discounts_role_discounts_condition() {
+  $conditions[] = array(
+    'property' => 'role',
+    'description' => t('User Role'),
+    'compare_type' => 'text',
+    'check_callback' => 'uc_discounts_role_check',
+    'item_field_callback' => 'uc_discounts_role_item_field',
+    'item_name_callback' => 'uc_discounts_role_item_name',
+  );
+
+  return $conditions;
+}
+
+/*******************************************************************************
+ * Callback Functions, Forms, and Tables
+ ******************************************************************************/
+
+function uc_discounts_role_check($condition, $total_price, $cart) {
+  global $user;
+  return isset($user->roles[$condition->item_id]);
+}
+
+function uc_discounts_role_item_field() {
+  // get user roles, excluding anonymous
+  $roles = user_roles(TRUE);
+
+  if (empty($roles)) {
+    $field = array(
+      '#type' => 'item',
+      '#title' => t('Role'),
+      '#description' => t('No roles available'),
+    );
+  }
+  else {
+    $field = array(
+      '#type' => 'select',
+      '#title' => t('Role'),
+      '#options' => $roles,
+    );
+  }
+
+  return $field;
+}
+
+function uc_discounts_role_item_name($item_id) {
+  $roles = user_roles(TRUE);
+  if (isset($roles[$item_id])) {
+    return $roles[$item_id];
+  }
+  return '';
+}

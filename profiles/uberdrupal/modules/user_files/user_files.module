@@ -1,0 +1,604 @@
+<?php
+/**
+ * @file user_files.module
+ * Provides core functions of user_files module
+ */
+
+/**
+ * Implementation of hook_menu().
+ */
+function user_files_menu() { 
+  // This is the minimum information you can provide for a menu item.
+  $items['user/%user/files'] = array(
+    'title' => 'Files',
+    'description' => 'View a list of user\'s private files',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('user_files_file_list', 1),
+    'access callback' => 'user_files_view_file_list',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK
+  );
+  // Delete link
+  $items['user/%user/files/%user_files_file/delete'] = array(
+    'title' => 'Delete file',
+    'description' => 'Delete this file',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('user_files_file_delete', 1, 3),#@todo
+    'access callback' => 'user_files_delete_file',
+    'access arguments' => array(1, 3),
+    'type' => MENU_LOCAL_TASK
+  );
+  // more complex menu item
+  $items['user/upload-file'] = array(
+    'title' => 'Upload a file',
+    'page callback' => 'drupal_get_form',
+    'description' => 'Add to your private files',
+    'page arguments' => array('user_files_upload_form'),
+    'access callback' => 'user_files_check_session',
+    'weight' => 0,
+    'type' => MENU_SUGGESTED_ITEM, 
+  );
+  
+  // more complex menu item
+  $items['user/upload-file/ajax'] = array(
+    'title' => 'Upload a file',
+    'page callback' => 'user_files_upload_ajax',
+    'file' => 'user_files.inc',
+    'description' => 'Add to your private files',
+    'access callback' => 'user_files_check_session',
+    'weight' => 0,
+    'type' => MENU_SUGGESTED_ITEM, 
+  );
+  
+  $items['user/my-files'] = array(
+    'title' => 'My files',
+    'page callback' => 'user_files_my_files_list',
+    'description' => 'View a list of your private files',
+    'access callback' => 'user_files_check_session',
+    'weight' => 0,
+    'type' => MENU_SUGGESTED_ITEM, 
+  );
+  
+  $items['system/files/user-files/cache'] = array(
+    'page callback' => 'user_files_cache',
+    'access callback' => 'user_files_check_session',
+    'type' => MENU_CALLBACK, 
+  );
+
+  return $items;
+}
+
+
+/**
+ * Implementation of hook_perm().
+ */
+function user_files_perm() {
+  return array('own and manage a private file repository', "view other users files", "delete other users files");
+}
+
+
+/**
+ * Implementation of hook_user().
+ */
+function user_files_user($op, &$edit, &$account, $category = NULL) {
+  switch ($op) {
+    case 'login':
+      // Update designs and images from anonymous account
+      user_files_login_update($account);
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_uc_checkout_complete
+*/
+function user_files_uc_checkout_complete($order, $account) {
+  user_files_login_update($account);
+}
+
+/**
+ * Menu handler for user_files_my_files_list
+*/
+function user_files_my_files_list() {
+  global $user;
+  $form_state = array();
+  return drupal_get_form('user_files_file_list', $user);
+}
+
+
+/**
+ * Provides form for the user to upload files
+ * @param $form_state form state array as per std form builder
+ * @param $ajax bool if true pass through theme function to
+ *                    enable ajax to harvest form token, build id etc
+*/
+function user_files_upload_form($form_state, $ajax = FALSE) {
+  global $user;
+  $form = array();
+  $form['#attributes'] = array('enctype' => "multipart/form-data");
+  
+  if ($form_state['storage']) {
+    //we're doing a rebuild after a submit here
+    $form['fid'] = array(
+      '#type'  => 'value',
+      '#value' => $form_state['storage']['fid']
+    );
+    $form['filename'] = array(
+      '#type'  => 'value',
+      '#value' => $form_state['storage']['filename']
+    );
+  }
+  
+  if ($ajax) {
+    //cache it so we can retrieve in ajax handler
+    $form['#cache'] = TRUE;
+    $form['#theme'] = 'user_files_upload_form_ajax';
+    $form['ajax'] = array(
+      '#type' => 'value',
+      '#value' => TRUE
+    );
+  }
+  
+  $form['title'] = array(
+    '#value' => t('Add a file to your private file repository.')
+  );
+  
+  if ($user->uid == 0) {
+    $form['prefix'] = array(
+      '#value' => theme('user_files_anon_upload_blurb')
+    );
+  }
+  
+  $form['file'] = array(
+    '#type' => 'file',
+    '#title' => t('Choose file'),
+    '#description' => t('Allowed extensions .jpg, .jpeg, .gif, .png')
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Upload file')
+  );
+  return $form;
+}
+
+
+/**
+ * Provides validation for user uploaded files
+*/
+function user_files_upload_form_submit($form, &$form_state) {
+  global $user;
+  //are we using ajax?
+  $ajax = $form_state['values']['ajax'];
+  
+  //validations
+  $limits = _upload_file_limits($user);
+  $validators = array(
+    'file_validate_extensions' => array($limits['extensions']),
+    'file_validate_image_resolution' => array($limits['resolution']),
+    'file_validate_size' => array($limits['file_size'], $limits['user_size']),
+  );
+  
+  // Save new file uploads.
+  if ((user_access('own and manage a private file repository')
+       || $user->uid == 1) &&
+      ($file = file_save_upload('file', $validators, file_create_path('user-files')))) {
+    drupal_set_message(t('Uploaded your file.'));
+    $form_state['redirect'] = 'user/'. $user->uid .'/files';
+    if ($user->uid == 0) {
+      $result = _user_files_assoc_anon($file->fid);
+      if ($result == FALSE) {
+        drupal_set_message(t('Could not associate anonymous user with file'));
+        watchdog('user_files', t('Could not associate anonymous user with file'));
+        form_set_error('', 'Session failure');
+      }
+    }
+    if (module_exists('imageapi')) {
+      $image = imageapi_image_open($file->filepath);
+    }
+    if ($image) {
+      module_load_include('inc', 'user_files');
+      user_files_prepare_image($image, $file);
+      imageapi_image_scale($image, 100, 100);
+      imageapi_image_close($image, file_create_path('user-files/thumbs/'. basename($file->filepath)));
+    }
+    $form_state['values']['fid'] = $file->fid;
+    if ($user->uid != 0) {
+      file_set_status($file, FILE_STATUS_PERMANENT);
+    }
+  }
+  else {
+    drupal_set_message(t('Could not upload your file.'), 'error');
+  }
+  if (!$ajax) {
+    $form_state['redirect'] = 'user/my-files';
+  }
+  else {
+    $form_state['storage']['fid'] = $file->fid;
+    $form_state['storage']['filename'] = $file->filename;
+  }
+}
+
+/**
+ * Check if the user can access the file uploading functions
+*/
+function user_files_check_session() {
+  //if user can't do sessions (ie no cookies) - don't give access
+  $sid = _user_files_sid();
+  if (!$sid) {
+    return FALSE;
+  }
+  return user_access('own and manage a private file repository');
+}
+
+/**
+ * Provides access callback to check if user can delete a file
+*/
+function user_files_delete_file($account, $file) {
+  if (user_access("delete other users files")) {
+    return TRUE;
+  }
+  global $user;
+  return ($account->uid == $user->uid &&
+          $account->uid == $file->uid); //this is own file
+}
+/**
+ * Provides access callback check for user files local task
+*/
+function user_files_view_file_list($account = FALSE) {
+  if (!$account) {
+    return FALSE;
+  }
+  global $user;
+  if ($user->uid == 1 || user_access("view other users files")) {
+    return TRUE;
+  }
+  if (!user_access('own and manage a private file repository') ) {
+    return FALSE;
+  }
+  if ($user->uid == $account->uid) {
+    return TRUE;
+  }
+}
+
+/**
+ * Implementation of hook_file_download().
+ */
+function user_files_file_download($file) {
+  if (_user_files_prefix($file, 'user-files')) {
+    global $user;
+    //check if this is a thumb or imagecache scaled image
+    $pattern = '#user-files/cache/f4n_number_([0-9]+)/(.*)#';
+    $matches = array();
+    if (_user_files_prefix($file, 'user-files/thumbs') ||
+        preg_match($pattern, $file, $matches)) {
+      $file = basename($file);
+      $file = file_create_path('user-files/'. $file);
+    }
+    $filepath = file_create_path($file);
+    $file_details = db_fetch_array(db_query(
+                      "SELECT f.uid
+                            ,f.fid
+                       FROM {files} f 
+                       WHERE f.filepath = '%s'", $filepath));
+    //check for logged in users
+    if ($user->uid == $file_details['uid'] || $user->uid == 1 ||
+        user_access("view other users files")) {
+      if ($user->uid == 0 && !_user_files_anon_view($file_details['fid'])) {
+        //we're looking at an anon user but not the correct session id
+        return -1;
+      }
+      $header = array(
+        'Content-Type: '. file_get_mimetype($file),
+        "Content-Transfer-Encoding: binary",
+        "Cache-Control: max-age=60, must-revalidate"
+      );
+      // add additional file header attributes
+      return $header;
+    }
+    //check if anonymous user
+  }
+  return -1;
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function user_files_theme($existing, $type, $theme, $path) {
+  return array(
+    'user_files_file_list' => array(
+      'arguments' => array('form' => array()),
+      'file' => 'user_files.theme.inc'
+    ),
+    'user_files_anon_upload_blurb' => array(
+      'arguments' => array(),
+      'file' => 'user_files.theme.inc'
+    ),
+    'user_files_upload_form_ajax' => array(
+      'arguments' => array('form' => NULL),
+      'file' => 'user_files.theme.inc'
+    )
+  );
+}
+
+
+
+
+/**
+ * Provides list of user's files
+*/
+function user_files_file_list(&$form_state, $account = FALSE) {
+  $form = array();
+  global $user;
+  foreach($files = _user_files_list($account, 50) as $file) {
+    $form['files'][$file->fid] = array('#type' => 'value', '#value' => $file);
+    $form['name'][$file->fid] = array('#value' => $file->filename);
+    $form['mime'][$file->fid] = array('#value' => $file->filemime);
+    $form['size'][$file->fid] = array('#value' => $file->filesize);
+    $form['view'][$file->fid] = array('#value' => l(t('View/Download'), $file->url));
+    if (user_access("delete other users files") || $user->uid == $account->uid) {
+      $form['delete'][$file->fid] = array('#value' => l(t('Delete'), 'user/'. $account->uid .'/files/'. $file->fid .'/delete'));
+    }
+    $image = '';
+    if (is_file($file->thumbfile) && @getimagesize($file->thumbfile)) {
+      $image = array(
+        '#value' => theme_image(
+          url($file->thumb, array('absolute' => TRUE)),
+          $file->filename,
+          t('Preview of !name', array('!name' => $file->filename)),
+          array(),
+          FALSE
+        )
+      );
+    }
+    $form['thumb'][$file->fid] = $image;
+  }
+  $form['account'] = array(
+    '#type'  => 'value',
+    '#value' => $account
+  );
+  $form['pager'] = array('#value' => theme('pager', array(), 50, 0));
+  return $form;
+}
+
+/**
+ * Provides array of files owned by user
+*/
+function _user_files_list($account = FALSE, $limit = FALSE) {
+  if ($account === FALSE) {
+    global $user;
+    $uid = $user->uid;
+  }
+  else {
+    $uid = $account->uid;
+  }
+  $files = array();
+  if ($limit) {
+    $res = pager_query("SELECT * FROM {files}
+                    WHERE uid = %d", $limit, 0, NULL, $uid);
+  }
+  else {
+    $res = db_query("SELECT * FROM {files}
+                    WHERE uid = %d", $uid);
+  }
+  while ($file = db_fetch_object($res)) {
+    if ($uid === 0 && !_user_files_anon_view($file->fid)) {
+      continue;
+    }
+    $file->url = _user_files_generate_url($file->filepath);
+    $file->thumb = _user_files_generate_thumb_url($file->filepath);
+    $file->thumbfile = file_create_path('user-files/thumbs/'. basename($file->filepath));
+    $files[$file->fid] = $file;
+  }
+  return $files;
+}
+
+/**
+ * Provides private url for file
+ * @param $path string, path of file to access
+ * @return string - path of file inside system files path
+*/
+function _user_files_generate_url($path) {
+  if (strpos($path, file_directory_path() .'/') === 0) {
+    $path = trim(substr($path, strlen(file_directory_path())), '\\/');
+  }
+  return url('system/files/'. $path, array('absolute' => TRUE));
+}
+
+/**
+ * Utility
+ * Checks if url contains the 'user-files' (or any other prefix)
+ * @param $haystack string to search in
+ * @param $needle string to search for
+ * @return bool: does haystack start with needle
+ */
+function _user_files_prefix($haystack, $needle) {
+  if (strlen($haystack) == 0) {
+    return FALSE; // avoid false positive.
+  }
+  return strpos($haystack, $needle) === 0;  
+}
+
+/**
+ * Utility
+ * Associates a file with anonymous user's session id
+ * @param $fid int file id
+ * @return Failure to write a record will return FALSE.
+ *    Otherwise SAVED_NEW or SAVED_UPDATED is returned
+ *    depending on the operation performed.
+*/
+function _user_files_assoc_anon($fid) {
+  $sid = _user_files_sid();
+  if (!$sid) {
+    drupal_set_message(t('Could not determine your session details.'), 'error');
+    return FALSE;
+  }
+  $record = array(
+    'fid' => $fid,
+    'sid' => $sid
+  );
+  return drupal_write_record('user_files_anon', $record);
+}
+
+/**
+ * Utility
+ * Check if the current anon user's sid matches the file's sid
+ * function _user_files_anon_view
+ * @param $fid int file id
+ * @return boolean TRUE if the sids match, otherwise FALSE
+ */
+
+function _user_files_anon_view($fid) {
+  global $user;
+  if ($user->uid == 1) {
+    return TRUE;
+  }
+  $file_sid = db_result(db_query("SELECT sid
+                            FROM {user_files_anon}
+                            WHERE fid = %d", $fid));
+  return $file_sid == _user_files_sid();
+}
+
+/**
+ * Utility
+ * Provides session id for anon users
+ * @return string session id from cookie
+*/
+function _user_files_sid() {
+  return $_COOKIE[session_name()];
+}
+
+/**
+ * Provides private url for preview of thumb file
+ * @param $path string, path of file to access
+ * @return string - path of file inside system files path
+*/
+function _user_files_generate_thumb_url($path) {
+  if (strpos($path, file_directory_path() .'/') === 0) {
+    $path = trim(substr($path, strlen(file_directory_path())), '\\/');
+  }
+  if (strpos($path, 'user-files/') === 0) {
+    $image = trim(substr($path, strlen('user-files')), '\\/');
+  }
+  return url('system/files/user-files/thumbs/'. $image, array('absolute' => TRUE));
+}
+
+/**
+ * Provides image details such as height/width/channels etc
+ * @param $fid int file id
+ * @paaram $as_array bool return array instead
+ * @return object/array
+ */
+function user_files_get_image_info($fid, $as_array = FALSE) {
+  $details = db_result(db_query("SELECT details
+                  FROM {user_files_image_info}
+                  WHERE fid = %d", $fid));
+  $details = unserialize($details);
+  if (is_array($details)) {
+    if ($as_array) {
+      return $details;
+    }
+    return (object)$details;
+  }
+  return FALSE;
+}
+
+/**
+ * Calls imagecache for the private user files
+*/
+function user_files_cache() {
+  $args = func_get_args();
+  $preset = check_plain(array_shift($args));
+  array_unshift($args, 'user-files');
+  $source = implode('/', $args);
+
+  if (!in_array(-1, module_invoke_all('file_download', $source))) {
+    _imagecache_cache($preset, $source);
+  }
+  else {
+    header('HTTP/1.0 403 Forbidden');
+    exit;
+  }
+}
+
+/**
+ * Implementation of hook_menu_alter
+ * Stop imagecache serving up user-files
+*/
+function user_files_menu_alter(&$items) {
+  $items[file_directory_path() .'/imagecache']['access callback'] = 'user_files_imagecache_access';
+}
+
+/**
+ * Override imagecache access permissions
+*/
+function user_files_imagecache_access() {
+  //does any part of the path include user-files (because imagecache works
+  // with relative paths like ../../user-files)
+  $args = arg();
+  if (in_array('user-files', $args)) {
+    //no can do
+    return FALSE;
+  }
+  //ok
+  return TRUE;
+}
+
+/**
+ * Function to tranfer files from anon account to new account
+*/
+function user_files_login_update($account) {
+  $anon_account = new stdClass();
+  $anon_account->uid = 0;
+  $files = _user_files_list($anon_account);
+  foreach ($files as $file) {
+    db_query("UPDATE {files} SET uid = %d
+             WHERE fid = %d", $account->uid, $file->fid);
+    file_set_status($file, FILE_STATUS_PERMANENT);
+    db_query("DELETE FROM {user_files_anon}
+             WHERE fid = %d", $file->fid);
+    drupal_set_message(t('Permanently saved file !file', array('!file' => $file->filename)));
+  }
+}
+
+/**
+ * Form builder to delete a file
+*/
+function user_files_file_delete($form_state, $account, $file) {
+  $form = array();
+  $form['file'] = array(
+    '#type'  => 'value',
+    '#value' => $file
+  );
+  $form['account'] = array(
+    '#type'  => 'value',
+    '#value' => $account
+  );
+  return confirm_form($form, t('Are you sure?'),
+                      'user/'. $account->uid .'/files',
+                      t('Are you sure you want to delete the file @filename, this cannot be undone?',
+                        array('@filename' => $file->filename)), t('Delete it!'));
+}
+
+/**
+ * Form submit handler
+*/
+function user_files_file_delete_submit($form, &$form_state) {
+  // Mark as orphaned - this does not make the file available to anonymous users
+  // because we have session ids too for them. Why not just delete the file and
+  // remove it from the files table? Well this module has downstream uses in
+  // e-commerce eg for uploading images to be used in printing - if you allow
+  // the user to fully delete the record and file then the store won't be able
+  // to find the file, which is especially important if the file is associated
+  // with an old order.
+  db_query("UPDATE {files} SET uid = 0 WHERE fid = %d", $form_state['values']['file']->fid);
+  drupal_set_message(t('Deleted your file @filename.', array('@filename' => $form_state['values']['file']->filename)));
+  $form_state['redirect'] = 'user/'. $form_state['values']['account']->uid .'/files';
+}
+
+/**
+ * Dynamic menu loader
+*/
+function user_files_file_load($file_id) {
+  return db_fetch_object(db_query("SELECT * FROM {files}
+                                    WHERE fid = %d", $file_id));  
+}

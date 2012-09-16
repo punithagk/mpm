@@ -1,0 +1,16 @@
+; $Id: uc_op_reports.info,v 1.1 2009/05/20 04:18:53 rszrama Exp $
+
+name = Ordered Products Reports
+description = Add ordered products reports to user profile pages and add a site-wide report for administrators.
+dependencies[] = uc_order
+dependencies[] = uc_product
+package = Ubercart - extra
+core = 6.x
+php = 5.0
+
+; Information added by drupal.org packaging script on 2009-05-20
+version = "6.x-1.0-rc1"
+core = "6.x"
+project = "uc_op_reports"
+datestamp = "1242860757"
+

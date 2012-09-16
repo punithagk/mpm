@@ -1,0 +1,125 @@
+<?php
+
+// $Id$
+
+define('UC_CHECKOUT_SIGNUP_DEFAULT_PANE_TITLE', t('Newsletter Signup'));
+define('UC_CHECKOUT_SIGNUP_DEFAULT_CHECKBOX_LABEL', t(''));
+define('UC_CHECKOUT_SIGNUP_DEFAULT_CHECKBOX_TEXT', t('Yes, please add me to the newsletter!'));
+
+
+
+/****************************
+* Ubercart Hooks
+*****************************/
+
+/**
+ *
+ * Implementation of hook_checkout_pane().
+ */
+function uc_checkout_signup_checkout_pane() {
+	$panes[] = array(
+		'id' => 'ep_signup',
+		'callback' => '_uc_checkout_signup_pane_signup',
+		'title' => variable_get('uc_checkout_signup_pane_title', UC_CHECKOUT_SIGNUP_DEFAULT_PANE_TITLE),
+		'desc' => t("Allows customers to signup for a newsletter."),
+		'weight' => 10,
+		'collapsible' => FALSE,
+	);
+	return $panes;
+}
+
+/**
+ * Display a custom checkout pane
+ */
+function _uc_checkout_signup_pane_signup($op, &$order, $arg2) {
+	switch ($op) {
+		case 'view':
+			$contents['uc_checkout_signup']['agree'] = array(
+				'#type' => 'checkboxes',
+				'#title' => variable_get('uc_checkout_signup_pane_checkbox_label', UC_CHECKOUT_SIGNUP_DEFAULT_CHECKBOX_LABEL),
+				'#options' => array('yes_add' => variable_get('uc_checkout_signup_pane_checkbox_text', UC_CHECKOUT_SIGNUP_DEFAULT_CHECKBOX_TEXT)),
+				'#default_value' => array(variable_get('uc_checkout_signup_checkbox_state', 'yes_add')),
+				'#weight' => 1,
+				'#required' => false,
+			);
+			return array('contents' => $contents, 'next-button' => FALSE);
+			break;
+		
+		case 'process':
+			// store the state of the Signup checkbox in the order object's data array
+			// (ubercart serializes this data automatically)
+			$order->data['uc_checkout_signup'] = $arg2['uc_checkout_signup']['agree']['yes_add'];
+			break;
+			
+		case 'settings':
+			$form['uc_checkout_signup_pane_title'] = array(
+		    '#type' => 'textfield',
+		    '#title' => t('Pane Title'),
+		    '#description' => t('Enter the title to use for the Checkout Signup checkout pane.'),
+		    '#default_value' => variable_get('uc_checkout_signup_pane_title', UC_CHECKOUT_SIGNUP_DEFAULT_PANE_TITLE),
+		    '#size' => 40,
+		  );
+		  $form['uc_checkout_signup_pane_checkbox_label'] = array(
+		    '#type' => 'textfield',
+		    '#title' => t('Checkbox Label'),
+		    '#description' => t('Enter the &lt;label&gt; text to display above the checkbox (ok to leave blank).'),
+		    '#default_value' => variable_get('uc_checkout_signup_pane_checkbox_label', UC_CHECKOUT_SIGNUP_DEFAULT_CHECKBOX_LABEL),
+		    '#size' => 60,
+		  );
+		  $form['uc_checkout_signup_pane_checkbox_text'] = array(
+		    '#type' => 'textfield',
+		    '#title' => t('Checkbox Text'),
+		    '#description' => t('Enter the text to display next to the checkbox.'),
+		    '#default_value' => variable_get('uc_checkout_signup_pane_checkbox_text', UC_CHECKOUT_SIGNUP_DEFAULT_CHECKBOX_TEXT),
+		    '#size' => 60,
+		  );
+			$form['uc_checkout_signup_checkbox_state'] = array(
+				'#type' => 'select',
+				'#title' => t('Default checkbox state'),
+				'#options' => array('yes_add' => 'checked', 0 => 'unchecked'),
+				'#default_value' => variable_get('uc_checkout_signup_checkbox_state', 'yes_add'),
+				'#description' => '',
+			);
+			$form['uc_checkout_signup_service'] = array(
+				'#type' => 'select',
+				'#title' => t('Email Service to Use'),
+				'#options' => array('campaignmonitor' => 'Campaign Monitor'),
+				'#default_value' => variable_get('uc_checkout_signup_service', 'campaignmonitor'),
+				'#description' => '',
+			);
+			return $form;
+			break;
+	}
+}
+
+/**
+ *
+ * Implementation of hook_order().
+ */
+function uc_checkout_signup_order($op, &$order, $arg2) {
+	switch ($op) {
+    case 'submit':
+    	// this case gets run once the customer clicks the Submit Order button
+			// on the Review Order page (not on the Checkout page).
+			
+			// allow for other services (such as Campaign Monitor) to be added in future versions
+			$newsletter_service = variable_get('uc_checkout_signup_service', 'campaignmonitor');
+			
+			switch ($newsletter_service) {
+				case 'campaignmonitor':
+				default:
+			    $api_key = variable_get('campaignmonitor_api_key', '');
+			    $list_id = variable_get('campaignmonitor_list_id', '');  
+			    $email = $order->primary_email;
+			    $name = $order->billing_first_name . ' ' . $order->billing_last_name;
+					
+					// only add customer to the list if the Signup checkbox is checked (in the uc_checkout_signup pane);
+					// note that only name and email are sent to Campaign Monitor
+					if ($order->data['uc_checkout_signup'] !== 0) {				
+						_campaignmonitor_add_subscriber($api_key, $list_id, $name, $email);
+					}
+					break;
+      }
+      break;
+  }
+}

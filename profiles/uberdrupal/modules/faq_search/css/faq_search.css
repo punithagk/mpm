@@ -1,0 +1,23 @@
+/* $Id: faq_search.css,v 1.1.2.1 2009/09/08 18:10:21 johnpv Exp $ */
+
+#faq-results {
+	display: none;
+	padding: 5px 0;
+	background: #eaeaea;
+}
+#faq-results a {
+	display: block;
+	width: auto;
+	padding: 2px 0 2px 10px;
+	border-bottom: 1px solid #ccc;
+}
+#faq-results a:hover {
+	text-decoration: none;
+	background: #ccc;
+}
+#faq-results p {
+	margin: 0;
+}
+#faq-results .message {
+	color: #b42a2a;
+}

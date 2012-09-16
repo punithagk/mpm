@@ -1,0 +1,10 @@
+name = Chatblock
+description = Provides an on site chat, located in a block.
+core = 6.x
+
+; Information added by drupal.org packaging script on 2011-12-25
+version = "6.x-1.0-beta1"
+core = "6.x"
+project = "chatblock"
+datestamp = "1324787738"
+

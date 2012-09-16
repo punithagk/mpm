@@ -1,0 +1,152 @@
+.widget-tabs h2 {
+    margin: 0 -16px;
+    padding: 0 16px 5px;
+}
+
+.widget-tabs .tabs {
+    margin: 0 -16px 15px;
+    padding: 0;
+    border-bottom: 1px solid #ddd;
+}
+
+.widget-tabs.medium .tabs {
+    border-bottom: none;
+}
+
+.widget-tabs .tabs ul.tabs-navigation {
+    border-bottom: 1px solid #ddd;
+    background: #f6f6f6;
+    padding: 0 2px;
+}
+
+.widget-tabs .tabs ul.tabs-navigation li {
+    position: relative;
+    top: 1px;
+    float: left;
+    font-weight: bold;
+    text-align: center;
+    border: 1px solid #f6f6f6;
+    border-bottom: 1px solid #ddd;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    -moz-border-radius-topleft: 4px;
+    -moz-border-radius-topright: 4px;
+    -webkit-border-top-left-radius: 4px;
+    -webkit-border-top-right-radius: 4px;
+}
+
+.widget-tabs.medium .tabs ul.tabs-navigation li {
+    padding: 5px 19px;
+}
+
+.col4 .widget-tabs .tabs ul.tabs-navigation li {
+    width: 94px;
+}
+
+.col6 .widget-tabs .tabs ul.tabs-navigation li {
+    width: 110px;
+}
+
+.widget-tabs .tabs ul.tabs-navigation li.current {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-bottom: 1px solid #fff;
+}
+
+.widget-tabs .tabs ul.tabs-navigation li a {
+    display: block;
+    padding: 5px;
+    outline: none;
+}
+
+.widget-tabs .tabs ul.tabs-navigation li.current a {
+    color: #444;
+}
+
+.widget-tabs .tabs div.tabs-content-panes {
+    padding: 0;
+}
+
+.widget-tabs .tabs div.tabs-content-pane {
+
+    display: none;
+    padding: 0;
+    height: 271px;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.widget-tabs.long .tabs div.tabs-content-pane {
+    height: 390px !important;
+
+}
+
+.widget-tabs.medium .tabs div.tabs-content-pane {
+    height: 330px !important;
+
+}
+
+.widget-tabs .tabs div.tabs-content-pane div.tab-text-content {
+    float: left;
+    margin: 0px 20px 0px 0px;
+    width: 250px;
+}
+
+.widget-tabs .tabs div.tabs-content-pane div.tab-text-content img {
+    float: right;
+    margin: 5px 0 0 10px;
+}
+
+.widget-tabs .tabs div.tabs-content-pane div.tab-text-content p {
+    margin: 0px 30px 10px 0px;
+}
+
+.widget-tabs .tabs div.tabs-content-pane div.tab-prices-content {
+    float: left;
+    width: 50%;
+}
+
+.widget-tabs .tabs div.tabs-content-pane div.tab-prices-content div.cost-calculator {
+    margin: 5px 0px 0px 0px;
+}
+
+.widget-tabs .tabs div.tabs-content-pane h3 {
+    margin: 15px 16px 5px;
+}
+
+.widget-tabs .tabs div.tabs-content-pane p,
+.widget-tabs .tabs div.tabs-content-panes dl {
+    margin: 0 16px 15px;
+}
+
+.widget-tabs .tabs div.tabs-content-panes table {
+    margin-top: 10px;
+    width: 100%;
+}
+
+.widget-tabs .tabs div.tabs-content-panes th {
+    background: #ffffff none repeat scroll 0 0;
+    color: #000000;
+    font-weight: bold;
+    font-size: 1em;
+    padding-left: 10px;
+    border: none;
+    padding-bottom: 10px;
+}
+
+.widget-tabs .tabs div.tabs-content-panes td {
+
+    qfont-weight: strong;
+    qfont-size: 1.2em;
+    padding-left: 10px;
+    border: 1px solid #ffffff;
+    padding-bottom: 10px;
+}
+
+.widget-tabs .tabs div.tabs-content-panes tr.even {
+    background: #ebebeb none repeat scroll 0 0;
+}
+
+.widget-tabs .tabs div.tabs-content-panes tr.odd {
+    background: #f6f6f6 none repeat scroll 0 0;
+}

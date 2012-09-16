@@ -1,0 +1,75 @@
+<?php
+
+// TODO: Add psql once the schema is stable
+
+function uc_discounts_install() {
+  drupal_install_schema('uc_discounts');
+}
+
+/**
+* Implementation of hook_schema().
+*/
+function uc_discounts_schema() {
+  $schema['uc_discounts'] = array(
+    'fields' => array(
+      'id' => array('type' => 'serial', 'not null' => TRUE),
+      'name' => array('type' => 'varchar', 'length' => 255, 'not null' => TRUE),
+      'description' => array('type' => 'varchar', 'length' => 255, 'not null' => TRUE),
+      'max_discounts' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0),
+      'do_end_processing' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0),
+      'is_exclusive' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0),
+      'weight' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE),
+      'start_time' => array('type' => 'int', 'not null' => TRUE),
+      'end_time' => array('type' => 'int', 'not null' => TRUE),
+      'is_active' => array('type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0),
+    ),
+    'primary key' => array('id'),
+  );
+
+  $schema['uc_discounts_conditions'] = array(
+    'fields' => array(
+      'id' => array('type' => 'serial', 'not null' => TRUE),
+      'discount_id' => array('type' => 'int', 'not null' => TRUE),
+      'condition_group' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 1),
+      'property' => array('type' => 'varchar', 'length' => 255, 'not null' => TRUE),
+      'op' => array('type' => 'char', 'length' => 2, 'not null' => TRUE),
+      'item_id' => array('type' => 'varchar', 'length' => 255),
+      'value' => array('type' => 'text', 'not null' => TRUE),
+      'weight' => array('type' => 'int', 'not null' => TRUE),
+      'amount' => array('type' => 'text', 'not null' => TRUE, 'default' => ''),
+    ),
+    'indexes' => array(
+      'discount_id' => array('discount_id'),
+    ),
+    'primary key' => array('id'),
+  );
+
+  $schema['uc_discounts_actions'] = array(
+    'fields' => array(
+      'id' => array('type' => 'serial', 'not null' => TRUE),
+      'discount_id' => array('type' => 'int', 'not null' => TRUE),
+      'property' => array('type' => 'varchar', 'length' => 255, 'not null' => TRUE),
+      'item_id' => array('type' => 'varchar', 'length' => 255),
+      'qty' => array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => '1'),
+      'amount' => array('type' => 'varchar', 'length' => 8, 'not null' => TRUE),
+      'weight' => array('type' => 'int', 'not null' => TRUE),
+    ),
+    'indexes' => array(
+      'discount_id' => array('discount_id'),
+    ),
+    'primary key' => array('id'),
+  );
+
+  return $schema;
+}
+
+function uc_discounts_uninstall() {
+  drupal_uninstall_schema('uc_discounts');
+}
+
+function uc_discounts_update_1() {
+  $ret = array();
+  $ret[] = update_sql("ALTER TABLE {uc_discounts_conditions} CHANGE item_id item_id TEXT");
+  $ret[] = update_sql("ALTER TABLE {uc_discounts_actions} CHANGE item_id item_id TEXT");
+  return $ret;
+}

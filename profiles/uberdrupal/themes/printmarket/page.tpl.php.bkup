@@ -1,0 +1,45 @@
+<?php include 'page.header.inc'; ?>
+	
+<div id="pageheading"><?php if ($title): print  $title ; endif; ?></div>
+<div>
+	<?php if($slider) : ?>
+		<div id="productslideshow">
+			<?php echo $slider;?>
+		</div>
+	<?php endif; ?>
+	<div style="height: 40px; display: block;">&nbsp;</div>
+</div>
+<div id="pagecontent">
+	<div><h3><?php if ($title): print  $title; endif; ?>:</h3></div>
+	<?php if ($tabs): print '<ul class="tabs primary">'. $tabs .'</ul>'; endif; ?>
+	<?php if ($tabs2): print '<ul class="tabs secondary">'. $tabs2 .'</ul>'; endif; ?>
+	<?php if ($show_messages && $messages): print $messages; endif; ?>
+	<?php print $content ?>
+		<?php if ($product_body) : ?>
+			<?php print $product_body ?>
+		<?php endif; ?>
+		<?php if ($product_sku) : ?>
+			<div id="thumbnailImages" style="width: 1000px; height: 150px; margin: 15px 0px 15px 0px; display: block;">
+				<?php print $product_sku ?>
+			</div>
+		<?php endif; ?>
+
+		<?php if ($product_template ||	$product_attr) : ?>
+			<div id="purchase">
+				<?php if ($product_template) : ?>
+					<div id="left">	
+						<?php print $product_template;?>
+					</div>
+				<?php endif; ?>
+				<?php if ($product_attr	) : ?>
+					<div id="right">	
+						<?php print $product_attr;?>
+					</div>
+				<?php endif; ?>				
+				<div class="clear"></div>
+			</div>
+		<?php endif; ?>
+</div>
+
+<?php include 'page.footer.inc'; ?>
+	
