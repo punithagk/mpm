@@ -1068,12 +1068,12 @@ function theme_uc_cart_view_form($form) {
                . $cs_element .'</div>'. drupal_render($form) .'</div>';
     }
     elseif ($type == 'button') {
-      /*$output .= '<div id="cart-form-buttons"><div id="update-checkout-buttons">'
+      $output .= '<div id="cart-form-buttons"><div id="update-checkout-buttons">'
                . drupal_render($form) .'</div><div id="continue-shopping-button">'
-               . $cs_element .'</div></div>';*/
-	unset($form['update']);
+               . $cs_element .'</div></div>';
+/*	unset($form['update']);
 	$output .= '<div id="cart-form-buttons">'
-               . '<div id="right">'. $cs_element . drupal_render($form) .'</div>'; 
+               . '<div id="right">'. $cs_element . drupal_render($form) .'</div>'; */
     }
   }
   else {
@@ -1112,10 +1112,10 @@ function uc_cart_view_table($table) {
       'cell' => '',
       'weight' => 2,
     ),
-    /*'qty' => array(
+    'qty' => array(
       'cell' => t('Qty.'),
       'weight' => 3,
-    ),*/
+    ),
     'total' => array(
       'cell' => t('Total'),
       'weight' => 4,

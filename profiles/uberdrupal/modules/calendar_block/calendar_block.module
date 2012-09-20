@@ -222,6 +222,16 @@ function calendar_block_ajax() {
  * Theme the calendar.
  */
 function theme_calendar_block($calendar) {
+
+  
+  $query		= db_query("select nid, created from {node} where type='blog' ");
+  $node_date		= array();
+  while($row = db_fetch_object($query)) {
+	//echo $row->created;
+	$node_date[]	= date("d-m-Y",$row->created);
+	$nids[]			= $row->nid;
+  }
+  
   $row_counter = 0;
   $num_rows = (count($calendar->dates) / 7);
   $weekdays = array_values($calendar->weekdays);
@@ -253,15 +263,18 @@ function theme_calendar_block($calendar) {
     $date->date = (drupal_strlen($date->month) == 1 ? "0$date->month" : $date->month) ."-$date->day-$date->year";
 
     $class = ($day_counter == 0) ? ' first' : ($day_counter == 6 ? ' last' : '');
+	$disabled = true;
     if ($date->month !== intval($calendar->month)) {
       $class .= ' disabled';
+	  $disabled = false;
+	  
     }
     if ($calendar->day && $date->day == $calendar->day) {
       $class .= ' today';
     }
     // Create a variable for day, so other modules can't interfere in hook_calendar_block
     $current_day = $date->day;
-
+	
     // Create a variable for the weekday as a reference for ather modules
     $date->weekday = $weekdays[$day_counter];
 
@@ -270,10 +283,29 @@ function theme_calendar_block($calendar) {
       $function = $module .'_calendar_block';
       $function($calendar, $date, 'alter');
     }
-
+	//echo "$date->day-$date->month-$date->year";
+	if($date->day <10)
+		$cday = '0'.$date->day;
+	else
+		$cday = $date->day;
+	if($date->month <10)
+		$mday = '0'.$date->month;
+	else
+		$mday = $date->month;
+	//echo "$cday-$mday-$date->year";
+	$date_key = array_search("$cday-$mday-$date->year", $node_date);
+	
+	//print_r($node);
+	$path = 'javascript://';
+	if($date_key && $disabled){
+		$node = node_load($nids[$date_key]);
+		$class .= ' today';
+		$path = $node->path;
+	}
+	//echo $node->path;//exit;
     $day_counter = ($day_counter < 6) ? $day_counter + 1: 0;
     $output[] = "      <div class=\"hok $class $date->date\">";
-    $output[] = "        <span>". ($date->content ? $date->content : $current_day) ."</span>";
+    $output[] = "        <span><a href='$path' >". ($date->content ? $date->content : $current_day) ."</a></span>";
     if ($day_counter > 0) {
       $output[] = "        <div class=\"border_right\"></div>";
     }

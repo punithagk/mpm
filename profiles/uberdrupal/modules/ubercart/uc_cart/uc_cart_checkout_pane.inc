@@ -602,7 +602,7 @@ function theme_cart_review_table($show_subtotal = TRUE) {
 
   // Set up table header.
   $header = array(
-    //array('data' => t('Qty'), 'class' => 'qty'),
+    array('data' => t('Qty'), 'class' => 'qty'),
     array('data' => t('Products'), 'class' => 'products'),
     array('data' => t('Price'), 'class' => 'price'),
   );
@@ -635,7 +635,7 @@ function theme_cart_review_table($show_subtotal = TRUE) {
     $context['type'] = 'amount';
     unset($context['subject']);
     $rows[] = array(
-      //array('data' => t('@qty&times;', array('@qty' => $item->qty)), 'class' => 'qty'),
+      array('data' => t('@qty&times;', array('@qty' => $item->qty)), 'class' => 'qty'),
       array('data' => $description, 'class' => 'products'),
       array('data' => uc_price($total, $context), 'class' => 'price'),
     );
@@ -693,7 +693,7 @@ function theme_uc_checkout_pane_cart_review($items) {
     );
 
     $rows[] = array(
-      //array('data' => $item->qty . '&times;', 'class' => 'qty'),
+      array('data' => $item->qty . '&times;', 'class' => 'qty'),
       array('data' => check_plain($item->title) . uc_product_get_description($item), 'class' => 'products'),
       array('data' => uc_price($price_info, $context), 'class' => 'price'),
     );

@@ -16,10 +16,16 @@ function ucAacCalculate(element) {
 		if(data.replacements["cost_check"] ==1) {
 			$(node).find('.cost').hide();
 			$('.uc-price-display').css('width','132px');
+			if($.browser.safari)
+			$('.uc-price-display').css('margin-top','-10px');
+			
+			
 		}
 		else
 		{
-			$('.uc-price-display').css('width','40px');
+			$('.uc-price-display').css('width','25px');
+			$('.uc-price-display').css('margin-top','0px');
+			
 		}
       }
 
