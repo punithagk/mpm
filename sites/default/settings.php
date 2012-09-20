@@ -90,7 +90,7 @@
  *   $db_url = 'pgsql://username:password@localhost/databasename';
  */
 //$db_url = 'mysql://root:admin@ec2-23-23-80-82.compute-1.amazonaws.com/market';
-$db_url = 'mysql://drupal:mpmuser@localhost/market';
+$db_url = 'mysql://root:admin@localhost/mpm';
 $db_prefix = '';
 
 /**

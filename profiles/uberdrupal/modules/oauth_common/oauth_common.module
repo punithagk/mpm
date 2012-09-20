@@ -58,7 +58,8 @@ function oauth_common_perm() {
 
   // Add seperate permissions for creating and
   // authorizing consumers in each context.
-  foreach(oauth_common_authorization_contexts() as $context => $levels) {
+  //foreach(oauth_common_authorization_contexts() as $context => $levels) {
+  foreach(oauth_common_context_list() as $context => $levels) {
     $permissions[] = sprintf('oauth register consumers in %s', $context);
     $permissions[] = sprintf('oauth authorize consumers in %s', $context);
   }
@@ -402,7 +403,8 @@ function oauth_common_can_create_consumers($account = NULL) {
 
   $can_register_consumers = user_access('oauth register any consumers', $account);
   if (!$can_register_consumers) {
-    foreach(oauth_common_authorization_contexts() as $context => $levels) {
+    //foreach(oauth_common_authorization_contexts() as $context => $levels) {
+    foreach(oauth_common_context_list() as $context => $levels) {
       $can_register_consumers = $can_register_consumers || user_access(sprintf('oauth register consumers in %s', $context), $account);
     }
   }
