@@ -906,6 +906,7 @@ function uc_cart_view_form($form_state, $items = NULL) {
       $form['items'][$i] = $display_item;
 
       $product = node_load($display_item['nid']['#value']);
+	  
       // Get the current product image widget.
       $image = $product->{'field_slider_image'}[0];
       $path = $image['filepath'];
@@ -927,6 +928,9 @@ function uc_cart_view_form($form_state, $items = NULL) {
         // Backward compatibility with old checkbox method.
         if ($form['items'][$i]['remove']['#type'] == 'checkbox') {
           $form['items'][$i]['remove'] = array('#type' => 'submit', '#value' => t('Remove'));
+		  if(!$product->nid)
+			$form['items'][$i]['remove']['#attributes'] = array('class' => 'coupon_button');
+		  
         }
 
         $form['items'][$i]['remove']['#name'] = 'remove-' . $i;
@@ -934,14 +938,16 @@ function uc_cart_view_form($form_state, $items = NULL) {
 
       $form['items'][$i]['title']['#type'] = 'value';
       $form['items'][$i]['description']['#type'] = 'value';
-
+	  //print_r($form['items'][$i]['qty']['#default_value']);exit;
       if (empty($display_item['qty'])) {
         $form['items'][$i]['qty'] = array(
           '#value' => '',
         );
       }
-
-      $form['items'][$i]['total'] = array(
+	  $form['items'][$i]['qty'] = array(
+          '#prefix' => '<span>'.$form['items'][$i]['qty']['#default_value'].'</span>',
+        );
+	  $form['items'][$i]['total'] = array(
         '#value' => uc_price($display_item['#total'], $context),
         '#theme' => 'uc_cart_view_price',
       );
@@ -966,7 +972,7 @@ function uc_cart_view_form($form_state, $items = NULL) {
       $form['continue_shopping'] = array(
         '#type' => 'submit',
         '#value' => $cs_text,
-        '#submit' => array('uc_cart_view_form_submit', 'uc_cart_view_form_continue_shopping'),
+        '#submit' => array('uc_cart_view_form_continue_shopping'),
       );
     }
   }

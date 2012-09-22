@@ -172,3 +172,18 @@ function warning_close() {
 	 $(".screen_fadout").fadeOut(300, function() {
 			  });
 }
+
+
+
+$(document).ready( function() {
+
+	//Date Picker reset button
+	$('.coupon_button').click(function (e) {
+		$('#edit-code').val('');
+		$('#edit-apply').trigger("click");
+		return false;
+	});
+
+	
+
+});

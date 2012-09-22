@@ -51,6 +51,7 @@
 function uc_removebutton_form_alter(&$form, &$form_state, $form_id) {
   switch ( $form_id ) {
     case 'uc_cart_view_form' :
+	  //$form['items']['#columns']['remove'] = array('cell' => 'Remove','weight' => 0);
 	  $form['items']['#columns']['cost'] = array('cell' => 'Price','weight' => 3);
 	  $form['items']['#columns']['discount'] = array('cell' => 'Discount','weight' => 3.1);
 	  $context= array(
@@ -95,13 +96,16 @@ function uc_removebutton_form_alter(&$form, &$form_state, $form_id) {
               '#submit' => array( 'uc_removebutton_remove_item' ),
               '#value' => 'id:'.$k,
               '#id' => 'remove-button-'.$k,
-			  '#attributes' => array('style' => 'border:0px;box-shadow:none;background:none repeat scroll 0 0 #FFFFFF;padding 0px 0px;border-radius:0px 0px 0px 0px;'),
-            ),
+			  '#attributes' => array('style' => 'border:0px;box-shadow:none;background:none repeat scroll 0 0 #FFFFFF;padding 0px 0px;border-radius:0px 0px 0px 0px;'),),
           ) ;
+		  if(empty($nid) && $cost_price == 0)
+			$form['items'][$k]['remove_button']['data']['remove_button_'.$k]['#attributes']['class']='coupon_button';
+		  
+		  
         }
 		
       }
-	  
+	  $form['items']['#columns']['remove_button'] = array('cell' => 'Remove','weight' => 0);
 	  
       break ;
     default :
