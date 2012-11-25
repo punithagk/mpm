@@ -325,6 +325,79 @@ function uc_order_menu() {
     'weight' => 0,
     'file' => 'uc_order.admin.inc',
   );
+  $items['admin/store/orders/%uc_order/quote'] = array(
+    'title' => 'Quote',
+    'page arguments' => array(3, 'view'),
+	'page callback' => 'uc_order_quote',
+    'access arguments' => array('view all orders'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 2,
+    'file' => 'uc_order.admin.inc',
+  );
+  $items['admin/store/orders/%uc_order/quote/view'] = array(
+    'title' => 'View Quote',
+    'page arguments' => array(3, 'view'),
+    'access arguments' => array('view all orders'),
+	'page callback' => 'uc_order_quote',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 1,
+    'file' => 'uc_order.admin.inc',
+  );  
+  $items['admin/store/orders/%uc_order/quote/print'] = array(
+    'title' => 'Print Quote',
+    'page arguments' => array(3, 'print'),
+    'access arguments' => array('view all orders'),
+	'page callback' => 'uc_order_quote',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 2,
+    'file' => 'uc_order.admin.inc',
+  );
+  $items['admin/store/orders/%uc_order/quote/email'] = array(
+	'title' => 'E-Mail Quote',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_order_mail_quote_form', 3),
+    'access arguments' => array('view all orders'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 3,
+    'file' => 'uc_order.admin.inc',
+  );
+  
+  $items['admin/store/orders/%uc_order/jobticket'] = array(
+    'title' => 'Job Ticket',
+    'page arguments' => array(3, 'view'),
+	'page callback' => 'uc_order_jobticket',
+    'access arguments' => array('view all orders'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 4,
+    'file' => 'uc_order.admin.inc',
+  );
+  $items['admin/store/orders/%uc_order/jobticket/view'] = array(
+    'title' => 'View Job Ticket',
+    'page arguments' => array(3, 'view'),
+    'access arguments' => array('view all orders'),
+	'page callback' => 'uc_order_jobticket',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 1,
+    'file' => 'uc_order.admin.inc',
+  );  
+  $items['admin/store/orders/%uc_order/jobticket/print'] = array(
+    'title' => 'Print Job Ticket',
+    'page arguments' => array(3, 'print'),
+    'access arguments' => array('view all orders'),
+	'page callback' => 'uc_order_jobticket',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 2,
+    'file' => 'uc_order.admin.inc',
+  );
+  $items['admin/store/orders/%uc_order/jobticket/email'] = array(
+	'title' => 'Email Job Ticket',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_order_mail_jobticket_form', 3),
+    'access arguments' => array('view all orders'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 3,
+    'file' => 'uc_order.admin.inc',
+  );
   $items['admin/store/orders/%uc_order/log'] = array(
     'title' => 'Log',
     'page callback' => 'uc_order_log',
@@ -596,12 +669,28 @@ function uc_order_mail($key, &$message, $params) {
 
   // Build the appropriate message paramaters based on the e-mail key.
   switch ($key) {
+    // Setup an e-mailed quote.
+    case 'quote':
+      $message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed';
+      $message['subject'] = t('Your Order Quote', array(), $langcode);
+      $message['from'] = uc_store_email_from();
+      $message['body'][] = theme('uc_order', $params['order'], 'admin-mail', variable_get('uc_cust_order_quote_template', 'quote'));
+      break;
+  
     // Setup an e-mailed invoice.
     case 'invoice':
       $message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed';
       $message['subject'] = t('Your Order Invoice', array(), $langcode);
       $message['from'] = uc_store_email_from();
       $message['body'][] = theme('uc_order', $params['order'], 'admin-mail', variable_get('uc_cust_order_invoice_template', 'customer'));
+      break;
+
+	// Setup an e-mailed jobticket.
+    case 'jobticket':
+      $message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed';
+      $message['subject'] = t('Order Job Ticket', array(), $langcode);
+      $message['from'] = uc_store_email_from();
+      $message['body'][] = theme('uc_order', $params['order'], 'admin-mail', variable_get('uc_cust_order_jobticket_template', 'jobticket'));
       break;
 
     // Setup a custom e-mail defined by an action on a predicate.
@@ -1046,7 +1135,10 @@ function op_products_edit_table() {
     '#tree' => TRUE,
     '#attributes' => array('class' => 'order-pane-table'),
   );
-
+  $table['#columns']['edit'] = array(
+    'cell' => t('Edit'),
+    'weight' => 0,
+  );
   $table['#columns']['remove'] = array(
     'cell' => t('Remove'),
     'weight' => 0,
@@ -1100,10 +1192,10 @@ function uc_order_new($uid = 0, $state = 'in_checkout') {
   $order->order_status = uc_order_state_default($state);
   $order->created = time();
   $order->modified = time();
-  $order->order_id = intval(date("YmdHis").$uid);
+  //$order->order_id = intval(date("YmdHis").$uid);
 
-  //drupal_write_record('uc_orders', $order);
-  drupal_write_record2('uc_orders', $order, false);
+  drupal_write_record('uc_orders', $order);
+  //drupal_write_record2('uc_orders', $order, false);
 
   uc_order_module_invoke('new', $order, NULL);
 

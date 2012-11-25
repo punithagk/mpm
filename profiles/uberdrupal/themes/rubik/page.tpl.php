@@ -11,10 +11,18 @@
   <?php print $skipnav ?>
 
   <div id='branding' class='clear-block'>
+	
     <div class='breadcrumb clear-block'><?php print $breadcrumb ?></div>
     <?php if ($user_links) print theme('links', $user_links) ?>
+	
   </div>
-
+  <div  id='admin-tabs' class='clear-block' >
+	<ul class="links admin-tabs">
+	<?php foreach($admin_menu as $amenu) { ?>		
+		<li><a href="<?php print $amenu['href']; ?>"><?php print $amenu['title']; ?></a></li>
+	<?php } ?>
+	</ul>	
+  </div>
   <div id='page-title' class='clear-block'>
     <?php if ($help_toggler) print $help_toggler ?>
     <?php if ($tabs): ?><?php print $tabs ?><?php endif; ?>

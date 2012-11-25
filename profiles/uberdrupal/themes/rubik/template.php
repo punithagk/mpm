@@ -135,6 +135,7 @@ function rubik_preprocess_page(&$vars) {
   if (empty($vars['help']) || !(strip_tags($vars['help']))) {
     $vars['help'] = '';
   }
+  $vars['admin_menu'] = menu_navigation_links('menu-administration-menu');
 }
 
 /**

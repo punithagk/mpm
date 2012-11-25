@@ -208,7 +208,7 @@ table th {
   padding:0px;
   line-height:20px;
   }
-
+  
 .primary-tabs li { padding-left:5px; }
 
 .pager a,
@@ -256,6 +256,115 @@ table th {
   background:#f4f4f4 url(images/bleeds.png) 0px -41px repeat-x;
   }
 
+.primary-tabs {
+  position:absolute;
+  right:60px;
+  bottom:-1px;
+  overflow:hidden;
+  height:36px;
+  padding:0px;
+  line-height:20px;
+  }
+  
+.primary-tabs li { padding-left:5px; }
+
+.pager a,
+.pager li.pager-current,
+.primary-tabs li a {
+  -moz-border-radius:3px;
+  -webkit-border-radius:3px;
+
+  padding:4px 9px;
+
+  font-size:11px;
+  font-weight:normal;
+
+  color:#999;
+  background:transparent;
+
+  border-width:1px;
+  border-style:solid;
+  border-color:transparent;
+  }
+
+  .pager a:hover {
+    background:#eee;
+    border-color:#ccc #ddd #eee;
+    }
+
+.pager li.pager-current,
+.primary-tabs li a:hover {
+  -moz-box-shadow:#fff 0px 1px 0px;
+  -webkit-box-shadow:#fff 0px 1px 0px;
+  border-color:#999;
+  background:#888 url(images/bleeds.png) 0px 0px repeat-x;
+  color:#fff;
+  }
+
+.primary-tabs li.active a,
+.primary-tabs li.active a.active {
+  -moz-border-radius:3px 3px 0px 0px;
+  -webkit-border-radius:3px 3px 0px 0px;
+
+  padding:4px 14px 11px;
+  color:#333;
+  border-bottom:0px;
+  border-color:#fff;
+  background:#f4f4f4 url(images/bleeds.png) 0px -41px repeat-x;
+  }
+  
+  
+ .admin-tabs {
+  /*position:absolute;
+    bottom:-1px;*/
+	margin-left:21px;
+  	right:60px;
+  	overflow:hidden;
+  	height:36px;
+  	padding:0px;
+  	line-height:20px;
+  }
+  
+.admin-tabs li { padding-left:5px; }
+
+.admin-tabs li a {
+  -moz-border-radius:3px;
+  -webkit-border-radius:3px;
+
+  padding:4px 9px;
+
+  font-size:20px;
+  font-weight:normal;
+
+  color:#999;
+  background:transparent;
+
+  border-width:1px;
+  border-style:solid;
+  /*border-color:transparent;*/
+  }
+
+.admin-tabs li a:hover {
+  -moz-box-shadow:#fff 0px 1px 0px;
+  -webkit-box-shadow:#fff 0px 1px 0px;
+  border-color:#999;
+  background:#888 url(images/bleeds.png) 0px 0px repeat-x;
+  color:#fff;
+  }
+
+.admin-tabs li.active a,
+.admin-tabs li.active a.active {
+  -moz-border-radius:3px 3px 0px 0px;
+  -webkit-border-radius:3px 3px 0px 0px;
+
+  padding:4px 14px 11px;
+  color:#333;
+  border-bottom:0px;
+  border-color:#fff;
+  background:#f4f4f4 url(images/bleeds.png) 0px -41px repeat-x;
+  }
+  
+  
 div.secondary-tabs {
   font-size:11px;
   padding:4px;
@@ -462,3 +571,26 @@ div.node .column-side .column-wrapper {
   font-weight:normal;
   font-size:16px;
   }
+
+  
+  
+  
+.overlayOuter{
+    background:#ccc;
+    opacity:0.9;
+    display:none;
+    height:100%;
+    left:0;
+    position:absolute;
+    top:0;
+    width:100%;
+    z-index:100001;
+ }
+
+
+.overlayInner{
+
+	width: 500px; height: 100%; position: absolute; top: 21px; 
+    
+    z-index:100002;
+ }

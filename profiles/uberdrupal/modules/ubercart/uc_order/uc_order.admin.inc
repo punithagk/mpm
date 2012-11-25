@@ -829,7 +829,7 @@ function uc_order_select_customer($email = NULL) {
     $last_name = strtolower(str_replace('*', '%', $_POST['last_name']));
     $email = strtolower(str_replace('*', '%', $_POST['email']));
     $username = strtolower(str_replace('*', '%', $_POST['username']));
-
+	$company = strtolower(str_replace('*', '%', $_POST['company']));
     if ($first_name && $first_name !== '%') {
       $where .= " AND LOWER(o.billing_first_name) LIKE '". db_escape_string($first_name) ."'";
     }
@@ -842,12 +842,21 @@ function uc_order_select_customer($email = NULL) {
     if ($username && $username !== '%') {
       $where .= " AND LOWER(u.name) LIKE '". db_escape_string($username) ."'";
     }
+	if ($company && $company !== '%') {
+	  if(substr($company,0,1) != '%')
+	  $company = '%'.$company;
+	  if(substr($company,-1) != '%')
+	  $company = $company.'%';
+      $where .= " AND LOWER(u.data) LIKE '". db_escape_string($company) ."'";
+    }
+
 
     $query = "SELECT DISTINCT u.uid, u.name, u.mail, o.billing_first_name, "
             ."o.billing_last_name FROM {users} AS u LEFT JOIN {uc_orders} "
             ."AS o ON u.uid = o.uid WHERE u.uid > 0 AND (o.order_status "
             ."IS NULL OR o.order_status IN ". uc_order_status_list('general', TRUE) .")". $where
             ." ORDER BY o.billing_last_name ASC";
+	
     $result = db_query($query);
 
     $options = array();
@@ -963,6 +972,13 @@ function uc_order_select_customer_form($form_state, $options = NULL) {
     $form['customer']['username'] = array(
       '#type' => 'textfield',
       '#title' => t('Username'),
+      '#size' => 24,
+      '#maxlength' => 96,
+    );
+	 // Customer Company.
+    $form['company'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Company'),
       '#size' => 24,
       '#maxlength' => 96,
     );
@@ -1369,7 +1385,9 @@ function uc_order_edit_products($order) {
         ),
       );
       $product->price = uc_price($price_info, $context);
-
+	  if(isset($_POST['opid'])) {
+		 $product->order_product_id = $_POST['opid'];
+	  }
       drupal_alter('order_product', $product, $order);
       uc_order_product_save($order->order_id, $product);
 
@@ -1413,7 +1431,15 @@ function uc_order_edit_products_form($form_state, $products) {
   if (($product_count = count($products)) > 0) {
     $form['products'] = tapir_get_table('op_products_edit_table');
     for ($i = 0; $i < $product_count; $i++) {
-      $form['products'][$i]['remove'] = array(
+      $form['products'][$i]['edit'] = array(
+        '#type' => 'checkbox',
+        '#name' => "products[$i][edit]",
+        '#theme' => 'uc_order_remove_product',
+        '#parents' => array(),
+        '#img_id' => $products[$i]->order_product_id,
+		'#edit_id' => $products[$i]->nid,
+      );
+	  $form['products'][$i]['remove'] = array(
         '#type' => 'checkbox',
         '#name' => "products[$i][remove]",
         '#theme' => 'uc_order_remove_product',
@@ -1506,13 +1532,23 @@ function theme_uc_order_edit_products_form($form) {
  * @ingroup themeable
  */
 function theme_uc_order_remove_product($form) {
-  return '<img id="'. $form['#img_id'] .'" src="'
+  if(!isset($form['#edit_id'])) {
+	  return '<img id="'. $form['#img_id'] .'" src="'
+		.  base_path() . drupal_get_path('module', 'uc_store')
+		.'/images/error.gif" style="padding-top: 1px; padding-left: .8em; '
+		.'padding-right: 2px; float: left; cursor: pointer;" '
+		.'alt="'. t('Remove this product.') .'" onclick="'
+		.'remove_product_button(\''. addslashes(t('Remove product from order?')) .'\', this.id);" />'
+		. drupal_render($form);
+  } else {
+	return '<img id="'. $form['#edit_id'] .'" src="'
     .  base_path() . drupal_get_path('module', 'uc_store')
-    .'/images/error.gif" style="padding-top: 1px; padding-left: .8em; '
+    .'/images/copy.gif" style="padding-top: 1px; padding-left: .8em; '
     .'padding-right: 2px; float: left; cursor: pointer;" '
-    .'alt="'. t('Remove this product.') .'" onclick="'
-    .'remove_product_button(\''. addslashes(t('Remove product from order?')) .'\', this.id);" />'
+    .'alt="'. t('Edit this product.') .'" onclick="'
+    .'edit_product_button(this.id,\''.$form['#img_id'].'\');" />'
     . drupal_render($form);
+  }
 }
 
 /**
@@ -1697,22 +1733,124 @@ function uc_order_add_product_form($form_state, $order, $node) {
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Add to order'),
-    '#attributes' => array('onclick' => 'return add_product_to_order('. $order->order_id .', '. $node->nid .');')
+    '#attributes' => array('onclick' => 'return add_product_to_order('. $order->order_id .', '. $node->nid .', "'.$_POST['opid'].'");')
   );
   $form['cancel'] = array(
     '#type' => 'submit',
     '#value' => t('Cancel'),
     '#attributes' => array('onclick' => "\$('#add-product-button').click(); return false;"),
   );
+  if(isset($_POST['edit'])) {
+	$form['submit']['#value'] = 'Edit Product';
+	$form['cancel']['#attributes'] = array('onclick' => 'return close_product_select();');
+  }
   $form['node'] = array(
     '#type' => 'value',
     '#value' => $node,
   );
 
   uc_form_alter($form, $form_state, __FUNCTION__);
+  $row	= db_fetch_object(db_query("SELECT data FROM {uc_order_products} WHERE order_product_id =%d", $_POST['opid']));
+  $data = unserialize($row->data);
+  
+  foreach ($form['node']['#value']->attributes as $key =>$aid) {
+	if(isset($data['attributes'][$aid->default_label])) {		
+		$form['node']['#value']->attributes[$key]->default_option = key($data['attributes'][$aid->default_label]);
+		$form['node']['#value']->attributes[$key]->default_value = current($data['attributes'][$aid->default_label]);
+	}	
+  }   
+  $form['#after_build'][] = 'uc_order_add_product_form_after_build';  
+  return $form;
+}
+
+function uc_order_add_product_form_after_build($form, &$form_state) {
+  foreach ($form['node']['#value']->attributes as $key =>$aid) {
+	if(empty($form['attributes'][$key]['#value']))
+	$form['attributes'][$key]['#value']  = $form['node']['#value']->attributes[$key]->default_value;
+  }   
+  return $form;
+}
+
+
+/**
+ * Displays an jobticket in the browser.
+ */
+function uc_order_quote($order, $op = 'view') {
+  $output = theme('uc_order', $order, $op, 'quote');
+  if ($op == 'print') {
+    
+	print $output;
+    exit();
+  }
+
+  return $output;
+}
+
+/**
+ * Sets recipients of an quote, and mail it.
+ *
+ * @see uc_order_mail_quote_form_validate()
+ * @see uc_order_mail_quote_form_submit()
+ * @ingroup forms
+ */
+function uc_order_mail_quote_form($form_state, $order) {
+  $form['order_id'] = array(
+    '#type' => 'hidden',
+    '#value' => $order->order_id,
+  );
+  $form['email'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Recipient e-mail address'),
+    '#default_value' => $order->primary_email,
+  );
+  $form['submit' ] = array(
+    '#type' => 'submit',
+    '#value' => t('Mail Quote'),
+  );
 
   return $form;
 }
+
+/**
+ * Only mail quotes to valid email addresses.
+ *
+ * @see uc_order_mail_quote_form()
+ */
+function uc_order_mail_quote_form_validate($form, &$form_state) {
+  $recipient = check_plain($form_state['values']['email']);
+  if (empty($recipient) || !valid_email_address($recipient)) {
+    form_set_error('email', t('Invalid e-mail address.'));
+  }
+}
+
+/**
+ * Form submission handler for uc_order_mail_quote_form().
+ *
+ * @see uc_order_mail_quote_form()
+ */
+function uc_order_mail_quote_form_submit($form, &$form_state) {
+  $order = uc_order_load($form_state['values']['order_id']);
+
+  if ($order === FALSE) {
+    drupal_set_message(t('Order @order_id does not exist.', array('@order_id' => $order_id)));
+    drupal_goto('admin/store/orders');
+  }
+
+  $recipient = check_plain($form_state['values']['email']);
+
+  $params = array('order' => $order);
+  $sent = drupal_mail('uc_order', 'quote', $recipient, uc_store_mail_recipient_language($recipient), $params, uc_store_email_from());
+
+  if (!$sent) {
+    drupal_set_message(t('E-mail failed.'));
+  }
+  else {
+    $message = t('Quote e-mailed to @email.', array('@email' => $recipient));
+    drupal_set_message($message);
+    uc_order_log_changes($order->order_id, array($message));
+  }
+}
+
 
 /**
  * Displays an invoice in the browser.
@@ -1723,7 +1861,6 @@ function uc_order_invoice($order, $op = 'view') {
     print $output;
     exit();
   }
-
   return $output;
 }
 
@@ -1791,6 +1928,88 @@ function uc_order_mail_invoice_form_submit($form, &$form_state) {
     uc_order_log_changes($order->order_id, array($message));
   }
 }
+
+
+/**
+ * Displays an jobticket in the browser.
+ */
+function uc_order_jobticket($order, $op = 'view') {
+  $output = theme('uc_order', $order, $op, 'jobticket');
+  if ($op == 'print') {
+    
+	print $output;
+    exit();
+  }
+
+  return $output;
+}
+
+
+/**
+ * Sets recipients of an Job Ticket, and mail it.
+ *
+ * @see uc_order_mail_jobticket_form_validate()
+ * @see uc_order_mail_jobticket_form_submit()
+ * @ingroup forms
+ */
+function uc_order_mail_jobticket_form($form_state, $order) {
+  $form['order_id'] = array(
+    '#type' => 'hidden',
+    '#value' => $order->order_id,
+  );
+  $form['email'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Recipient e-mail address'),
+    '#default_value' => $order->primary_email,
+  );
+  $form['submit' ] = array(
+    '#type' => 'submit',
+    '#value' => t('Mail Job Ticket'),
+  );
+
+  return $form;
+}
+
+/**
+ * Only mail Job Ticket to valid email addresses.
+ *
+ * @see uc_order_mail_jobticket_form()
+ */
+function uc_order_mail_jobticket_form_validate($form, &$form_state) {
+  $recipient = check_plain($form_state['values']['email']);
+  if (empty($recipient) || !valid_email_address($recipient)) {
+    form_set_error('email', t('Invalid e-mail address.'));
+  }
+}
+
+/**
+ * Form submission handler for uc_order_mail_jobticket_form().
+ *
+ * @see uc_order_mail_jobticket_form()
+ */
+function uc_order_mail_jobticket_form_submit($form, &$form_state) {
+  $order = uc_order_load($form_state['values']['order_id']);
+
+  if ($order === FALSE) {
+    drupal_set_message(t('Order @order_id does not exist.', array('@order_id' => $order_id)));
+    drupal_goto('admin/store/orders');
+  }
+
+  $recipient = check_plain($form_state['values']['email']);
+
+  $params = array('order' => $order);
+  $sent = drupal_mail('uc_order', 'jobticket', $recipient, uc_store_mail_recipient_language($recipient), $params, uc_store_email_from());
+
+  if (!$sent) {
+    drupal_set_message(t('E-mail failed.'));
+  }
+  else {
+    $message = t('Job Ticket e-mailed to @email.', array('@email' => $recipient));
+    drupal_set_message($message);
+    uc_order_log_changes($order->order_id, array($message));
+  }
+}
+
 
 /**
  * Displays a log of changes made to an order.

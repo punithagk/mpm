@@ -181,7 +181,8 @@ function load_customer_search_results() {
       first_name: $('#customer-select #edit-first-name').val(),
       last_name: $('#customer-select #edit-last-name').val(),
       email: $('#customer-select #edit-email').val(),
-      username: $('#customer-select #edit-username').val()
+      username: $('#customer-select #edit-username').val(),
+	  company: $('#customer-select #edit-company').val()
     },
     function (contents) {
       $('#customer-select').empty().append(contents);
@@ -346,14 +347,34 @@ function add_product_form() {
 }
 
 /**
+ * Loads the quantity and other extra product fields.
+ */
+function edit_product_button(node_id,opid) {
+  add_product_browser = $('#products-selector').html();
+
+  show_product_throbber();
+	
+  $.post(Drupal.settings.ucURL.adminOrders + $('#edit-order-id').val() + '/add_product/' + node_id, {edit:1, opid:opid},
+    function(contents) {
+	  $('#products-selector').empty().append(contents);
+	  hide_product_throbber();
+    }
+  );
+  
+}
+
+/**
  * Adds the selected product to the order.
  */
-function add_product_to_order(order_id, node_id) {
+function add_product_to_order(order_id, node_id, opid) {
+  
   var post_vars = fetch_product_data();
   post_vars['action'] = 'add';
   post_vars['nid'] = node_id;
   post_vars['qty'] = $('#edit-add-qty').val();
-
+  if(opid !="") {
+	post_vars['opid'] = opid;
+  }
   $('#uc-order-add-product-form :input').not(':radio:not(:checked), :checkbox:not(:checked)').each(
     function() {
       post_vars[$(this).attr('name')] = $(this).val();
