@@ -1,0 +1,62 @@
+<?php
+// $Id: uc_order_queue.module,v 1.1 2009/02/24 01:11:18 jtsnow Exp $
+
+/**
+ * @file
+ * The Quote Request module for Ubercart.
+ * 
+ */
+
+function uc_order_queue_order($op, &$arg1, $arg2) {
+
+	switch ($op) {
+		case 'new':
+		// Do something to save payment info!
+		
+		break;		
+		case 'save':
+		// Do something to save payment info!
+		$order_id = $arg1->order_id;
+		db_query("DELETE FROM {uc_order_queues} WHERE order_id ='%s'",$order_id );
+		foreach($arg1->products as $product) {
+			
+			db_query("INSERT INTO {uc_order_queues} (	order_id, nid, product,quantity, paper, colors, coating, proof, printing_turnaround,  turnaround_date,created_on) 
+				VALUES('%s', %d, '%s', '%s', '%s', '%s', '%s', '%s','%s',  '%s', now()) ", $order_id, $product->nid,current($product->data['attributes']['Product']), current($product->data['attributes']['Quantity']), current($product->data['attributes']['Paper']), current($product->data['attributes']['Colors']), current($product->data['attributes']['Coating']), current($product->data['attributes']['Proof']), current($product->data['attributes']['Printing Turnaround']),calculate_turnaround_date(current($product->data['attributes']['Printing Turnaround']), $arg1->created));
+		}
+		break;
+	}
+}
+
+function print_turnaround_date($order_id) {
+	$query 		= db_query("Select turnaround_date, product FROM {uc_order_queues} WHERE order_id ='%s'", $order_id);
+	$records 	= array();
+	while($row = db_fetch_object($query)) {
+		$records[] = array("turnaround_date" => date("m-d-Y H:i:s", $row->turnaround_date), "product" => $row->product);
+	}
+	
+	return $records;
+}
+function calculate_turnaround_date($turnaround, $order_created) {
+
+	switch($turnaround) {
+		case '24 Hours':
+		case '2 Business Days':
+		return strtotime("+2 day", $order_created);
+		case '3 Business Days':
+		return strtotime("+3 day", $order_created);
+		case '48 Hours':
+		case '4 Business Days':
+		return strtotime("+4 day", $order_created);
+		case '5 Business Days':
+		return strtotime("+5 day", $order_created);
+		case '7 Business Days':
+		return strtotime("+7 day", $order_created);
+		default:
+		if(empty($turnaround)) 
+			return strtotime("now");
+		else
+			return strtotime($turnaround);
+	}
+}
+
+ 

@@ -20,7 +20,7 @@
                 </td>
                 <td width="98%">
                   <div style="padding-left: 1em;">
-                  <span style="font-size: large;"><?php echo $store_name; ?></span><br />
+                  <br />
                   <?php echo $site_slogan; ?>
                   </div>
                 </td>
@@ -94,8 +94,10 @@
                 <td nowrap="nowrap">
                   <b><?php echo t('Order Grand Total:'); ?></b>
                 </td>
-                <td width="98%">
+                <td width="48%">
                   <b><?php echo $order_total; ?></b>
+                
+                  <b><a href ="<?php  global $base_url; echo $base_url."/store/orders/".$order->order_id.'/credit'?>" ><?php echo 'Click here to pay balance amount'; ?></a></b>
                 </td>
               </tr>
               <tr>
@@ -125,31 +127,12 @@
                 <td colspan="2">
 
                   <table border="0" cellpadding="1" cellspacing="0" width="100%" style="font-family: verdana, arial, helvetica; font-size: small;">
-		    <tr>
-                        <?php
-                                // First to check if the images has been generated from preview request
-                                global $base_url;
-                                $path = variable_get('barcode_default_path', 'barcodes');
-                                $encoding = variable_get('barcode_encoding', array('UPC-A'));
-                                $filename = file_create_path($path).'/'.$order->order_id.$encoding.'.png';
-                                if (!file_exists($filename)) {
-                                        include_once drupal_get_path('module', 'barcode') . '/barcode.inc.php';
-                                        $bar= new BARCODE();
-                                        $type = 'png';
-                                        $bar->setSymblogy($encoding);
-                                        $bar->setHeight(variable_get('barcode_height', 30));
-                                        $bar->setScale(variable_get('barcode_scale', 2.0));
-                                        $bar->setHexColor(variable_get('barcode_bcolor', '#000000'),variable_get('barcode_barcolor', '#FFFFFF'));
-                                        $bar->setFont(variable_get('barcode_font', drupal_get_path('module', 'barcode') ."/arialbd.ttf"));
-                                        $bar->genBarCode($order->order_id,$type,file_create_path($path).'/'.$order->order_id.$encoding);
-                                }
-
-                                echo '<img src="'.$base_url."/".$filename.'" alt="'.$order->order_id.'" />';
-                        ?>
-		    </tr>
                     <tr>
                       <td nowrap="nowrap">
-                        <b><?php echo t('Order #:').$order_link; ?></b>
+                        <b><?php echo t('Order #: '); ?></b>
+                      </td>
+		      <td width="98%">
+                        <?php echo $order_link; ?>
                       </td>
                     </tr>
 
@@ -259,7 +242,9 @@
                               <?php echo t('SKU: ') . $product->model; ?><br />
                               <?php if (isset($product->data['attributes']) && is_array($product->data['attributes']) && count($product->data['attributes']) > 0) {?>
                               <?php foreach ($product->data['attributes'] as $attribute => $option) {
-                                echo '<li>'. t('@attribute: @options', array('@attribute' => $attribute, '@options' => implode(', ', (array)$option))) .'</li>';
+								$option_string = implode(', ', (array)$option);
+								if(!empty($option_string))
+									echo '<li>'. t('@attribute: @options', array('@attribute' => $attribute, '@options' => $option_string)) .'</li>';								
                               } ?>
                               <?php } ?>
                               <br />
@@ -271,6 +256,14 @@
 
                       </td>
                     </tr>
+		    <tr>
+			<td colspan="2">
+                        <br /><br /><b><?php echo t('Order Comments:'); ?>&nbsp;</b>
+			<?php			   
+			    echo $comments = uc_order_pane_order_comments('customer',$order);				
+			?>
+			</td>
+		    </tr>
                   </table>
 
                 </td>

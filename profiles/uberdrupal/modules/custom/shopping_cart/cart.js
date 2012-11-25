@@ -173,7 +173,27 @@ function warning_close() {
 			  });
 }
 
+    
+function refresh() { 
+	window.location.reload(true);	 
+}
 
+    
+function update_order_status(order_id, status) {
+	var baseurl = location.protocol +"//"+ location.host + Drupal.settings.basePath;
+	$.ajax({
+		type: "POST",
+		url:  baseurl + 'update-order-status/'+order_id+'/'+status,
+		dataType: "json",
+		success: function (data) {
+			if(data.status)
+				refresh()
+			else
+				alert("Error while update order status!");
+			
+		}
+	});
+}
 
 $(document).ready( function() {
 
@@ -183,7 +203,62 @@ $(document).ready( function() {
 		$('#edit-apply').trigger("click");
 		return false;
 	});
-
+	current_url = window.location.href;	
+	if(current_url.indexOf("admin/print_queue") > -1 || current_url.indexOf("admin/quote_queue") > -1 || current_url.indexOf("admin/sales_queue") > -1 || current_url.indexOf("admin/pre_press_queue") > -1 || current_url.indexOf("admin/bindery_queue") > -1)
+	{
+		 timer = setTimeout(refresh, 120000);		 
+	}
 	
-
+	$('.update_order_status').click(function (e) {
+		order_id = $(this).attr("id");
+		status = $(this).attr("status");
+		update_order_status(order_id , status);
+		return false;
+	});
+	
+	$(".view-print-queue").live("click", function(){
+	
+		var baseurl = location.protocol +"//"+ location.host + Drupal.settings.basePath;
+		
+		var orderid = $(this).attr("orderid");
+		var template = $(this).attr("template");	
+		if(orderid) {
+			$("#overlayInner-" + orderid).load(baseurl + "admin/store/orders/"+orderid +"/"+ template+"/print",
+		   // the following is the callback   
+			  function(){
+			  clearTimeout(timer);
+			  $("#overlayOuter-" + orderid).fadeIn(300);
+			  $("#overlayOuter-" + orderid).height($(document).height());
+			  var width = ($(document).width()/2) -300;
+			  $("#overlayInner-" + orderid).css("left", width);
+			  
+			  $("#overlayInner-" + orderid).slimScroll({
+				height:  '800px',alwaysVisible :true, allowPageScroll: false
+				
+				});	
+			  });
+		 } else {
+			$(".overlayOuter" ).fadeOut(300);
+			setTimeout(refresh, 120000);	
+		 }
+	});
+	
+	
+	$(document).ajaxComplete(function(e, xhr, settings)
+	{
+		var baseUrl = location.protocol +"//"+ location.host + Drupal.settings.basePath;
+		//alert(settings.url.replace(Drupal.settings.basePath,""));
+		
+		base_url = settings.url.replace(Drupal.settings.basePath,"");
+		url_split = base_url.split("/");
+		if (url_split[0]=="views" || url_split[1]=="ajax")
+		{
+			$('.update_order_status').click(function (e) {
+				order_id = $(this).attr("id");
+				status = $(this).attr("status");
+				update_order_status(order_id , status);
+				return false;
+			});
+		}
+	});
 });

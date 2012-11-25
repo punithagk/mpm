@@ -3,6 +3,11 @@
 function shopping_cart_init() {
 	
 	drupal_add_js(drupal_get_path('module', 'shopping_cart') .'/cart.js');
+	if ((arg(0) == 'admin' && (arg(1) == 'print_queue'  || arg(1) == 'quote_queue' || arg(1) == 'sales_queue' || arg(1) == 'pre_press_queue' || arg(1) == 'bindery_queue'))) {
+      drupal_add_js(drupal_get_path('module', 'shopping_cart') .'/jquery-ui.js');  
+	  drupal_add_js(drupal_get_path('module', 'shopping_cart') .'/slimScroll.js'); 
+	  
+    }
 }
 function shopping_cart_twitter_pull_blocks() {
 
@@ -217,6 +222,13 @@ function shopping_cart_menu() {
 		'access callback' => TRUE,		
 		'type' => MENU_CALLBACK,
 	);
+	$items['update-order-status'] = array(
+		'page callback' => 'update_order_status',
+		'access callback' => TRUE,		
+		'type' => MENU_CALLBACK,
+	);
+	
+	
 
         $items['coating-validator'] = array(
                 'page callback' => 'coating_validator',
@@ -271,6 +283,14 @@ function shopping_cart_menu() {
 	   'weight' => -100,
 	);
 	return $items;
+}
+
+function update_order_status() {
+	$order_id 	= arg(1);
+	$status 	= arg(2);
+	$status 	= uc_order_update_status($order_id, $status);
+	echo json_encode(array("status"=>$status));
+	die();
 }
 
 function coating_validator() {
@@ -558,9 +578,11 @@ function shopping_cart_form_alter(&$form, $form_state, $form_id) {
         break;
 		case 'uc_product_add_to_cart_form':
 			//print_r($form['attributes']['18']['#title']);
-			foreach($form['attributes'] as $key =>$att) {
-				if($att['#title'] == 'Product') {
-					$form['attributes'][$key]['#attributes'] = array("onchange" => "product_change(this.id)");
+			if(isset($form['attributes'])) {
+				foreach($form['attributes'] as $key =>$att) {
+					if($att['#title'] == 'Product') {
+						$form['attributes'][$key]['#attributes'] = array("onchange" => "product_change(this.id)");
+					}
 				}
 			}
 			
@@ -735,4 +757,19 @@ function shopping_cart_user($op, &$edit, &$account, $category = NULL) {
 		 );
         break;
   }
+}
+
+
+
+function shopping_cart_line_item() {
+  $items[] = array(
+    'id' => 'line-item-tax',
+    'title' => t('Tax'),
+    'weight' => 3,
+    'default' => FALSE,
+    'stored' => TRUE,
+    'add_list' => TRUE,
+    'calculated' => TRUE, 
+  );
+  return $items;
 }

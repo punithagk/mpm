@@ -1,0 +1,90 @@
+<?php
+// $Id: uc_order_queue.install,v 1.1 2009/02/24 01:11:18 jtsnow Exp $
+
+/**
+ * @file
+ * Database installation, uninstallation, and updates for the UC order_queue module.
+ */
+
+/**
+ * Ubercart uc_order_queue.module schema
+ */
+function uc_order_queue_schema() {
+  $schema = array();
+
+  $schema['uc_order_queues'] = array(
+    'description' => t('Settings for quotable products.'),
+    'fields' => array(
+      'order_queue_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,        
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'order_id' => array(
+        'type' => 'varchar',
+		'length' => 500,
+        'not null' => FALSE,        
+      ),
+	   'product' => array(
+        'type' => 'varchar',
+		'length' => 500,
+        'not null' => FALSE,        
+      ),
+	  'quantity' => array(
+        'type' => 'varchar',
+		'length' => 500,
+        'not null' => FALSE,        
+      ),
+	   'paper' => array(
+        'type' => 'varchar',
+		'length' => 500,
+        'not null' => FALSE,        
+      ),
+	  'colors' => array(
+        'type' => 'varchar',
+		'length' => 500,
+        'not null' => FALSE,        
+      ),
+	   'coating' => array(
+        'type' => 'varchar',
+		'length' => 500,
+        'not null' => FALSE,        
+      ),
+	  'proof' => array(
+        'type' => 'varchar',
+		'length' => 500,
+        'not null' => FALSE,        
+      ),
+	  'printing_turnaround' => array(
+        'type' => 'varchar',
+		'length' => 500,
+        'not null' => FALSE,        
+      ),
+	  'created_on' => array(
+        'type' => 'datetime',
+		'not null' => FALSE,      
+      ),
+	  'turnaround_date' => array(
+        'description' => 'The Unix timestamp indicating by when the order should be shipped.',
+        'type' => 'int',
+        'not null' => FALSE,        
+      ),
+    ),
+    'primary key' => array('order_queue_id'),
+  );
+  return $schema;
+}
+
+function uc_order_queue_install() {
+  drupal_install_schema('uc_order_queue');
+}
+
+function uc_order_queue_uninstall() {
+  drupal_uninstall_schema('uc_order_queue');
+}

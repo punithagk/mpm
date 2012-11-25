@@ -1,0 +1,37 @@
+<?php
+
+/**
+ * @file
+ * Defines the credit card payment method and hooks in payment gateways.
+ */
+
+/*******************************************************************************
+ * Hook Functions (Drupal)
+ ******************************************************************************/
+
+/**
+ * Implements hook_menu().
+ */
+function uc_custom_credit_menu() {
+ 
+  $items['store/orders/%uc_order/credit'] = array(
+    'title callback' => 'uc_credit_terminal_title',
+    'title arguments' => array(2),
+    'description' => 'Displays a form to process a credit card payment.',
+    'page callback' => 'uc_custom_credit_terminal',
+    'page arguments' => array(2),
+    'access arguments' => array('process anonymous credit cards'),
+    'type' => MENU_CALLBACK,   
+	'file' => 'uc_custom_credit.inc',
+  );
+
+  return $items;
+}
+
+
+/**
+ * Implements hook_perm().
+ */
+function uc_custom_credit_perm() {
+  return array('process anonymous credit cards');
+}
