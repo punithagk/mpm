@@ -943,13 +943,13 @@ function uc_store_tables() {
  * Displays a list of orders made by a customer.
  */
 function uc_store_customer_orders($uid) {
-  $result = pager_query("SELECT * FROM {uc_orders} WHERE uid = %d AND "
-                       ."order_status IN ". uc_order_status_list('general', TRUE)
-                       ." ORDER BY created DESC", 50, 0,
+  $result = pager_query("SELECT uc_orders.*,uc_payment_receipts.amount  FROM {uc_orders} as uc_orders LEFT JOIN {uc_payment_receipts} as uc_payment_receipts  ON uc_orders.order_id = uc_payment_receipts.order_id  WHERE uc_orders.uid = %d AND "
+                       ."uc_orders.order_status IN ". uc_order_status_list('general', TRUE)
+                       ." ORDER BY uc_orders.created DESC", 50, 0,
                         NULL, $uid);
 
   $header = array(t('View'), t('Order ID'), t('Date'), t('Billing name'),
-                  t('Shipping name'), t('Items'), t('Total'));
+                  t('Shipping name'), t('Items'), t('Total'), t('Paid') , t('Pending'));
 
   $totals = array('orders' => 0, 'items' => 0, 'total' => 0);
   while ($order = db_fetch_object($result)) {
@@ -995,7 +995,9 @@ function uc_store_customer_orders($uid) {
         array('data' => check_plain($bname)),
         array('data' => check_plain($sname)),
         array('data' => $item_count['COUNT(*)']),
-        array('data' => uc_price($order->order_total, $context), 'nowrap' => 'nowrap')),
+        array('data' => uc_price($order->order_total, $context), 'nowrap' => 'nowrap'),
+		array('data' => uc_price($order->amount, $context), 'nowrap' => 'nowrap'),
+		array('data' => uc_price($order->order_total-$order->amount, $context), 'nowrap' => 'nowrap')),
       'id' => 'order-'. $order->order_id,
     );
   }

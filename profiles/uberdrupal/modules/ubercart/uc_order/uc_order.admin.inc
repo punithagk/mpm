@@ -434,7 +434,9 @@ function uc_order_admin($sql = NULL, $args = NULL, $search = FALSE) {
     array('data' => t('Actions')),
     array('data' => t('Order ID'), 'field' => 'o.order_id', 'sort' => 'desc'),
     array('data' => t('Customer')),
-    array('data' => t('Total'), 'align' => 'center', 'field' => 'o.order_total'),
+    array('data' => t('Total'), 'align' => 'right', 'field' => 'o.order_total'),
+	array('data' => t('Paid'), 'align' => 'right'),
+	array('data' => t('Pending'), 'align' => 'right'),
     array('data' => t('Purchase date'), 'align' => 'center', 'field' => 'o.created'),
     array('data' => t('Status'), 'field' => 'os.title'),
   );
@@ -497,13 +499,15 @@ function uc_order_admin($sql = NULL, $args = NULL, $search = FALSE) {
         $order_name = t('User: !name', array('!name' => $account));
       }
     }
-
+	$paid_amount  = db_result(db_query("SELECT SUM(amount) FROM {uc_payment_receipts} WHERE order_id = %d", $order->order_id));
     $rows[] = array(
       'data' => array(
         array('data' => uc_order_actions($order, TRUE)),
         array('data' => $order->order_id),
         array('data' => check_plain($order_name)),
         array('data' => uc_price($order->order_total, $context), 'align' => 'right'),
+		array('data' => uc_price($paid_amount, $context), 'align' => 'right'),
+		array('data' => uc_price($order->order_total - $paid_amount, $context), 'align' => 'right'),
         array('data' => format_date($order->created, 'custom', variable_get('uc_date_format_default', 'm/d/Y')), 'align' => 'center'),
         array('data' => $order->title),
       ),
@@ -1389,6 +1393,16 @@ function uc_order_edit_products($order) {
 		 $product->order_product_id = $_POST['opid'];
 	  }
       drupal_alter('order_product', $product, $order);
+	  if(!empty($product->order_product_id) && $product->model == 'I2KSF' ) //&& round($product->cost) ==0 && round($product->price) ==0
+	  {
+		$result_obj = db_fetch_object(db_query("SELECT cost, price, weight, qty, model, title FROM {uc_order_products} WHERE order_product_id = %d", $product->order_product_id));
+		$product->title = $result_obj->title;
+		$product->cost = $result_obj->cost;
+		$product->price = $result_obj->price;
+		$product->weight = $result_obj->weight;
+		$product->qty = $result_obj->qty;
+		//$product->model = $result_obj->model;		
+	  }
       uc_order_product_save($order->order_id, $product);
 
       if (variable_get('uc_order_logging', TRUE)) {
@@ -1479,6 +1493,7 @@ function uc_order_edit_products_form($form_state, $products) {
         '#name' => "products[$i][model]",
         '#parents' => array(),
         '#size' => 6,
+		'#attributes' => array('readonly' => 'readonly'),
       );
       $form['products'][$i]['weight'] = array(
         '#type' => 'textfield',
@@ -1706,9 +1721,18 @@ function uc_order_product_select_form($form_state, $order_id, $options = array()
  * @see uc_order_add_product_form()
  */
 function uc_order_add_product($order, $product) {
-  $output = '<div style="margin: 1em;"><strong>Add '. check_plain($product->title) .'</strong>'
-          . drupal_get_form('uc_order_add_product_form', $order, $product) .'</div>';
-
+  global $base_path;
+  $output = '
+		<link rel="stylesheet" media="all" type="text/css" href="'.$base_path.drupal_get_path('module', 'uc_order') .'/jquery-ui.css" />
+			
+		<script type="text/javascript" src="'.$base_path. drupal_get_path('module', 'uc_order') .'/jquery-1.8.2.min.js"></script>
+		<script type="text/javascript" src="'.$base_path. drupal_get_path('module', 'uc_order') .'/jquery-ui.min.js"></script><div style="margin: 1em;"><strong>Add '. check_plain($product->title) .'</strong>'
+          . drupal_get_form('uc_order_add_product_form', $order, $product) .'
+		   </script><script src="'.$base_path. drupal_get_path('module', 'uc_order') .'/jquery-ui-sliderAccess.js" type="text/javascript"></script>
+		  <script src="'.$base_path. drupal_get_path('module', 'uc_order') .'/jquery-ui-timepicker-addon.js" type="text/javascript"></script>
+		   <link href="'.$base_path.drupal_get_path('module', 'uc_order') .'/jquery-ui-timepicker-addon.css" rel="stylesheet" type="text/css"><script type="text/javascript">$("#edit-attributes-7").datetimepicker();</script>
+		  </div>';
+ 
   print $output;
   exit();
 }
@@ -1768,6 +1792,9 @@ function uc_order_add_product_form_after_build($form, &$form_state) {
 	if(empty($form['attributes'][$key]['#value']))
 	$form['attributes'][$key]['#value']  = $form['node']['#value']->attributes[$key]->default_value;
   }   
+  drupal_add_js(drupal_get_path('module', 'uc_order') .'/jquery-ui-sliderAccess.js');
+  drupal_add_js(drupal_get_path('module', 'uc_order') .'/jquery-ui-timepicker-addon.js');
+  drupal_add_css(drupal_get_path('module', 'uc_order') .'/jquery-ui-timepicker-addon.css');
   return $form;
 }
 

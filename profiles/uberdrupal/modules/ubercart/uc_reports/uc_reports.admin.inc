@@ -56,8 +56,10 @@ function uc_reports_customers() {
     array('data' => t('Products'), 'field' => 'products'),
     array('data' => t('Total'), 'field' => 'total', 'sort' => 'desc'),
     array('data' => t('Average'), 'field' => 'average'),
+    array('data' => t('Paid'), 'field' => 'paid'),
+    array('data' => t('Pending'), 'field' => 'pending'),
   );
-  $csv_rows[] = array(t('#'), t('Customer'), t('Username'), t('Orders'), t('Products'), t('Total'), t('Average'));
+  $csv_rows[] = array(t('#'), t('Customer'), t('Username'), t('Orders'), t('Products'), t('Total'), t('Average'), t('Paid'), t('Pending'));
 
   $sql = '';
   $sql_count = '';
@@ -90,6 +92,9 @@ function uc_reports_customers() {
     $products = !empty($customer['products']) ? $customer['products'] : 0;
     $total_revenue = uc_price($customer['total'], $context);
     $average_revenue = uc_price($customer['average'], $context);
+    $paid = db_fetch_object(db_query('select sum(amount) as amount from {uc_payment_receipts} where order_id in (select order_id from uc_orders where uid = %d)', $customer['uid']));
+    $account_receivable = uc_price($customer['total'] - $paid->amount, $context);
+    $account_paid = uc_price($paid->amount, $context);
     $rows[] = array(
       array('data' => $customer_number),
       array('data' => $name),
@@ -98,8 +103,12 @@ function uc_reports_customers() {
       array('data' => $products),
       array('data' => $total_revenue),
       array('data' => $average_revenue),
+      array('data' => $account_paid),
+      array('data' => $account_receivable),
     );
-    $csv_rows[] = array($customer_number, $customer_order_name, $customer_name, $orders, $products, $customer['total'], $customer['average']);
+	$customer['paid'] = $paid->amount;
+	$customer['pending'] = $customer['total'] - $paid->amount;
+    $csv_rows[] = array($customer_number, $customer_order_name, $customer_name, $orders, $products, $customer['total'], $customer['average'], $customer['paid'], $customer['pending']);
   }
   if (empty($rows)) {
     $rows[] = array(array('data' => t('No customers found'), 'colspan' => count($header)));
@@ -737,12 +746,15 @@ function uc_reports_sales_summary() {
 
   // Add the sales data report table to the output.
   $output = theme('table', $header, $rows, array('class' => 'uc-sales-table'));
-
+ 
   // Build the header statistics table header.
   $header = array(array('data' => t('Statistics'), 'width' => '50%'), '');
-
+  $order_total = db_result(db_query("SELECT SUM(order_total) FROM {uc_orders} WHERE order_status IN $order_statuses"));
+  $paid_amount  = db_result(db_query("SELECT SUM(amount) FROM {uc_payment_receipts} WHERE order_id IN (SELECT order_id FROM {uc_orders} WHERE order_status IN $order_statuses) "));
   $rows = array(
-    array(array('data' => t('Grand total sales')), array('data' => uc_price(db_result(db_query("SELECT SUM(order_total) FROM {uc_orders} WHERE order_status IN $order_statuses")), $context))),
+    array(array('data' => t('Grand total sales')), array('data' => uc_price($order_total, $context))),
+	 array(array('data' => t('Grand total paid sales')), array('data' => uc_price($paid_amount, $context))),
+	  array(array('data' => t('Grand total pending sales')), array('data' => uc_price($order_total - $paid_amount, $context))),
     array(array('data' => t('Customers total')), array('data' => db_result(db_query("SELECT COUNT(DISTINCT uid) FROM {uc_orders} WHERE order_status IN $order_statuses")))),
     array(array('data' => t('New customers today')), array('data' => db_result(db_query("SELECT COUNT(DISTINCT uid) FROM {uc_orders} WHERE order_status IN $order_statuses AND %d >= created AND created >= %d", $today_end, $today_start)))),
     array(array('data' => t('Online customers')), array('data' => db_result(db_query("SELECT COUNT(DISTINCT s.uid) FROM {sessions} as s LEFT JOIN {uc_orders} as o ON s.uid = o.uid WHERE s.uid > 0 AND o.order_status IN $order_statuses")))),
@@ -752,23 +764,32 @@ function uc_reports_sales_summary() {
   $output .= theme('table', $header, $rows, array('width' => '100%', 'class' => 'uc-sales-table'));
 
   // Build the total orders by status table header.
-  $header = array(array('data' => t('Total orders by status'), 'width' => '50%'), '');
+  $header = array(array('data' => t('Total orders by status')), array('data' => t('Count ')), array('data' => t('Total ')), array('data' => t('Paid ')), array('data' => t('Pending ')));
   $rows = array();
   $unknown = 0;
 
   // Loop through the order statuses with their total number of orders.
-  $result = db_query("SELECT s.order_status_id, order_status, s.title, s.weight, COUNT(o.order_status) as order_count FROM {uc_orders} as o LEFT JOIN {uc_order_statuses} as s ON s.order_status_id = o.order_status GROUP BY s.order_status_id, order_status, s.title, s.weight ORDER BY s.weight DESC");
+  $result = db_query("SELECT s.order_status_id, o.order_status, s.title, s.weight, COUNT(o.order_status) as order_count, SUM(o.order_total) as order_total  FROM {uc_orders} as o 
+  LEFT JOIN {uc_order_statuses} as s ON s.order_status_id = o.order_status 
+  GROUP BY s.order_status_id, o.order_status, s.title, s.weight  ORDER BY s.weight DESC");
   while ($status = db_fetch_array($result)) {
+	$paid_amount  = db_result(db_query("SELECT SUM(amount) FROM {uc_payment_receipts} WHERE order_id IN (SELECT order_id FROM {uc_orders} WHERE order_status ='".$status['title']."') "));
     if (!empty($status['title'])) {
+	  
       // Add the total number of orders with this status to the table.
       $rows[] = array(
         l($status['title'], 'admin/store/orders/sort/'. $status['order_status_id']),
         $status['order_count'],
+		uc_price($status['order_total'], $context),
+		uc_price($paid_amount, $context),
+		uc_price($status['order_total'] - $paid_amount, $context),
       );
     }
     else {
       // Keep track of the count of orders with an unknown status.
       $unknown += $status['order_count'];
+	  $unknown_total += $status['order_total'];
+	  $unknown_paid += $paid_amount ;
     }
   }
 
@@ -777,6 +798,9 @@ function uc_reports_sales_summary() {
     $rows[] = array(
       t('Unknown status'),
       $unknown,
+	  uc_price($unknown_total, $context),
+	  uc_price($unknown_paid, $context),
+		uc_price($unknown_total - $unknown_paid, $context),
     );
   }
 

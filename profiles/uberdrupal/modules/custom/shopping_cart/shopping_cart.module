@@ -761,6 +761,9 @@ function shopping_cart_user($op, &$edit, &$account, $category = NULL) {
 
 
 
+/**
+ * Implements hook_line_item().
+ */
 function shopping_cart_line_item() {
   $items[] = array(
     'id' => 'line-item-tax',
@@ -772,4 +775,53 @@ function shopping_cart_line_item() {
     'calculated' => TRUE, 
   );
   return $items;
+}
+/*
+ * Sample function for replacing one field
+ * in views query with another fields value
+ *
+ * The sample does the replacement if the target field
+ * is empty (not set)
+ *
+ * To actual use you need to replace
+ *	YOUR VIEW NAME HERE with your views name 
+ *	target_field_name_here with the field name of the field to overright
+ *	source_field_name_here with the field name of the replacement field
+ */
+
+function shopping_cart_views_pre_render(&$view) {
+	if ( $view->name == 'sales_report' ) {
+		// This will show the query results and field name
+		foreach ( $view->result as $index => $data ) {
+			if ( $data->uc_payment_receipts_amount ==  $data->uc_orders_order_total) {
+				unset($view->result[$index]);
+			}
+		}
+	}
+}
+
+
+
+
+/**
+ * Implementation of hook_views_pre_execute().
+ */
+
+function shopping_cart_views_pre_execute(&$view){
+  if ($view->name == 'sales_report')
+  {
+    $search 		= array('ORDER BY');
+    $replace 		= array('GROUP BY uc_payment_receipts.order_id ORDER BY');
+	$query 			= $view->build_info['query'];
+	$count_query	= $view->build_info['count_query'];
+	
+    $query 			= str_replace($search, $replace, $query);
+    $count_query 	= str_replace($search, $replace, $count_query);
+	$search 		= array('uc_payment_receipts.amount AS uc_payment_receipts_amount');
+    $replace 		= array('SUM(uc_payment_receipts.amount) AS uc_payment_receipts_amount');
+	$query 			= str_replace($search, $replace, $query);
+    $count_query = str_replace($search, $replace, $count_query);
+	$view->build_info['query']  = $query;
+	$view->build_info['count_query'] = $count_query;
+  }
 }

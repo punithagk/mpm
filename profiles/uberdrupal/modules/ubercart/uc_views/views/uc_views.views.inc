@@ -11,6 +11,36 @@ define('UC_RECIPIENT_PREFIX', "Recipient's");
  * Implementation of hook_views_data().
  */
 function uc_views_views_data() {
+  $order_products = drupal_get_schema('uc_payment_receipts');
+  $data['uc_payment_receipts']['table']['group'] = t('Payment Receipts');
+  $data['uc_payment_receipts']['table']['base'] = array(
+    'field' => 'receipt_id',
+    'title' => t('Payment Receipts'),
+    'help' => t("Balance Payment Receipts"),
+  );
+
+  $data['uc_payment_receipts']['table']['join']['uc_orders'] = array(
+    'left_field' => 'order_id',
+    'field' => 'order_id',
+  );
+  
+  $data['uc_payment_receipts']['amount'] = array(
+    'title' => t('Paid Amount'),
+    'help' => $order_schema['fields']['amount']['description'],
+    'field' => array(
+      'handler' => 'uc_views_handler_field_money_amount',
+      'float' => TRUE,
+      
+    ),
+    'sort' => array(
+      'handler' => 'views_handler_sort',
+    ),
+    'filter' => array(
+      'handler' => 'views_handler_filter_float',
+    ),
+  );
+  
+
   $order_products = drupal_get_schema('uc_order_queues');
   $data['uc_order_queues']['table']['group'] = t('Ubercart order queue');
   $data['uc_order_queues']['table']['base'] = array(
@@ -355,6 +385,12 @@ function uc_views_views_data() {
         'order_id' => 'order_id',
         'order_total' => 'order_total',
       ),
+    ),
+    'sort' => array(
+      'handler' => 'views_handler_sort',
+    ),
+    'filter' => array(
+      'handler' => 'uc_views_handler_filter_order_balance',
     ),
   );
 
